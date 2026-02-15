@@ -56,13 +56,22 @@ is_dangerous() {
     return 1
 }
 
+# Format epoch timestamp as human-readable datetime.
+# Uses `date -r` (macOS/BSD) with `date -d` (GNU/Linux) as fallback.
+format_datetime() {
+    local epoch="$1"
+    date -r "$epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -d "@$epoch" '+%Y-%m-%d %H:%M:%S'
+}
+
 enable_allow() {
     require_session_id
     local minutes="${1:-10}"
-    local until_epoch=$(($(date +%s) + minutes * 60))
+    local until_epoch
+    until_epoch=$(($(date +%s) + minutes * 60))
     mkdir -p "$STATE_DIR"
     git config -f "$CONFIG_FILE" "$(get_section).until" "$until_epoch"
-    local until_time=$(date -r "$until_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -d "@$until_epoch" '+%Y-%m-%d %H:%M:%S')
+    local until_time
+    until_time=$(format_datetime "$until_epoch")
     echo "Auto-approve enabled until $until_time ($minutes minutes)"
 }
 
@@ -74,16 +83,19 @@ disable_allow() {
 
 show_status() {
     require_session_id
-    local until_epoch=$(git config -f "$CONFIG_FILE" "$(get_section).until" 2>/dev/null || echo 0)
+    local until_epoch
+    until_epoch=$(git config -f "$CONFIG_FILE" "$(get_section).until" 2>/dev/null || echo 0)
 
     if [[ "$until_epoch" -eq 0 ]]; then
         echo "Auto-approve: disabled"
     else
-        local now=$(date +%s)
+        local now
+        now=$(date +%s)
 
         if [[ "$now" -lt "$until_epoch" ]]; then
             local remaining=$(( (until_epoch - now) / 60 ))
-            local until_time=$(date -r "$until_epoch" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -d "@$until_epoch" '+%Y-%m-%d %H:%M:%S')
+            local until_time
+            until_time=$(format_datetime "$until_epoch")
             echo "Auto-approve: enabled until $until_time ($remaining minutes remaining)"
         else
             echo "Auto-approve: expired"
@@ -104,21 +116,28 @@ show_status() {
 }
 
 check_approval() {
-    local input=$(cat)
+    local input
+    input=$(cat)
 
-    export CLAUDE_SESSION_ID=$(echo "$input" | jq -r '.session_id // empty')
+    # Extract session ID from hook input; exit silently if missing
+    # (no session = no state to check, fall through to default permission handling)
+    CLAUDE_SESSION_ID=$(echo "$input" | jq -r '.session_id // empty')
+    export CLAUDE_SESSION_ID
     [[ -z "$CLAUDE_SESSION_ID" ]] && exit 0
 
-    local command=$(echo "$input" | jq -r '.tool_input.command // empty')
+    local command
+    command=$(echo "$input" | jq -r '.tool_input.command // empty')
     [[ -z "$command" ]] && exit 0
 
     # Dangerous commands always require manual approval
     is_dangerous "$command" && exit 0
 
-    local until_epoch=$(git config -f "$CONFIG_FILE" "$(get_section).until" 2>/dev/null || echo 0)
+    local until_epoch
+    until_epoch=$(git config -f "$CONFIG_FILE" "$(get_section).until" 2>/dev/null || echo 0)
     [[ "$until_epoch" -eq 0 ]] && exit 0
 
-    local now=$(date +%s)
+    local now
+    now=$(date +%s)
     if [[ "$now" -ge "$until_epoch" ]]; then
         git config -f "$CONFIG_FILE" --remove-section "$(get_section)" 2>/dev/null || true
         exit 0

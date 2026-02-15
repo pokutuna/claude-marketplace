@@ -108,11 +108,48 @@ Add to your Claude Code settings:
 
 ## How it works
 
+```
+                          ┌─────────────────────┐
+                          │  Claude Code runs a  │
+                          │    Bash command       │
+                          └──────────┬────────────┘
+                                     │
+                          ┌──────────▼────────────┐
+                          │  PreToolUse hook fires │
+                          │  (allow-until.sh check)│
+                          └──────────┬────────────┘
+                                     │
+                          ┌──────────▼────────────┐
+                          │  Is auto-approve       │
+                     No   │  enabled & not expired?│
+                  ┌───────┤                        │
+                  │       └──────────┬────────────┘
+                  │                  │ Yes
+                  │       ┌──────────▼────────────┐
+                  │       │  Does command match    │
+                  │       │  a forbidden pattern?  │
+                  │       └───┬────────────────┬───┘
+                  │       Yes │                │ No
+                  │           │     ┌──────────▼──────────┐
+                  │           │     │  Output JSON with    │
+                  │           │     │  "permissionDecision"│
+                  │           │     │  : "allow"           │
+                  │           │     └──────────┬──────────┘
+                  │           │                │
+                  ▼           ▼                ▼
+            ┌──────────┐ ┌──────────┐  ┌────────────┐
+            │ No output│ │ No output│  │ Auto-       │
+            │ = prompt │ │ = prompt │  │ approved!   │
+            │ user     │ │ user     │  └────────────┘
+            └──────────┘ └──────────┘
+```
+
 1. The plugin registers a `PreToolUse` hook for Bash commands
 2. When `/allow-until enable` is called, it stores an expiration timestamp
 3. Before each Bash command, the hook checks:
    - Is auto-approval enabled and not expired?
    - Is the command safe (not in the blocked list)?
 4. If both conditions are met, the command is auto-approved
+5. Otherwise, no output is produced and Claude Code falls back to prompting the user
 
 Session state is stored in `${XDG_STATE_HOME:-~/.local/state}/claude-allow-until.conf` using git-config format.
