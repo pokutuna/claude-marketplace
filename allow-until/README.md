@@ -38,33 +38,22 @@ This plugin provides a way to temporarily bypass permission prompts for Bash com
 /allow-until status
 ```
 
-### Test a command against forbidden patterns
+## Forbidden Patterns
+
+Certain dangerous commands (e.g. `rm -rf`, `git push --force`) are always blocked and require manual approval, even when auto-approve is enabled. Default patterns are defined in [`bin/allow-until.sh`](bin/allow-until.sh).
+
+You can test whether a command would be blocked:
 
 ```
 /allow-until test-pattern "rm -rf /tmp/foo"
 /allow-until test-pattern "git push --force origin main"
 ```
 
-## Blocked Commands
+### Customizing Patterns
 
-The following patterns are always blocked and will require manual approval:
+Override the default patterns by setting the `SKILLS_ALLOW_UNTIL_FORBIDDEN_PATTERNS` environment variable. Patterns are semicolon-separated (`;`) bash regex.
 
-- `rm -rf`, `rm -fr`, `rm -r -f`, etc. - Recursive forced deletion
-- `mkfs`, `dd if=` - Filesystem destruction
-- `| sh`, `| bash` - Remote code execution via pipe
-- `git push --force`, `git push -f` - Force push
-- `git reset --hard` - Hard reset
-- `git clean -f` - Force clean
-
-## Configuration
-
-### Custom Forbidden Patterns
-
-You can override the default blocked patterns by setting the `SKILLS_ALLOW_UNTIL_FORBIDDEN_PATTERNS` environment variable. Patterns are separated by semicolons (`;`) and use bash regex syntax.
-
-When set, the environment variable **completely replaces** the default patterns. When unset, the defaults listed in [Blocked Commands](#blocked-commands) are used.
-
-### Setting Methods
+When set, the environment variable **completely replaces** the default patterns.
 
 #### Claude Code settings (recommended)
 
@@ -84,64 +73,36 @@ Set in `.claude/settings.json` or `.claude/settings.local.json`:
 export SKILLS_ALLOW_UNTIL_FORBIDDEN_PATTERNS="rm .*-(r.*f|f.*r|rf|fr);mkfs;dd if=;git push.*(--force| -f( |$))"
 ```
 
-### Priority
-
-Settings are applied in the following order (highest priority first):
-
-1. `settings.json` / `settings.local.json` `env` - overrides shell environment variables
-2. Shell environment variable (`export`)
-3. Default patterns (built-in)
-
 Use `/allow-until status` to see which patterns are currently active.
 
 ## Installation
 
-Add to your Claude Code settings:
-
-```json
-{
-  "enabledPlugins": {
-    "allow-until@your-marketplace": true
-  }
-}
+```bash
+claude plugin marketplace add pokutuna/claude-plugins
+claude plugin install allow-until@pokutuna-plugins --scope user
 ```
+
+> **Note:** We recommend installing with `--scope user` (default) rather than project scope. See [Recommendation](https://github.com/pokutuna/claude-plugins#recommendation) for details.
 
 ## How it works
 
-```
-                          ┌─────────────────────┐
-                          │  Claude Code runs a  │
-                          │    Bash command       │
-                          └──────────┬────────────┘
-                                     │
-                          ┌──────────▼────────────┐
-                          │  PreToolUse hook fires │
-                          │  (allow-until.sh check)│
-                          └──────────┬────────────┘
-                                     │
-                          ┌──────────▼────────────┐
-                          │  Is auto-approve       │
-                     No   │  enabled & not expired?│
-                  ┌───────┤                        │
-                  │       └──────────┬────────────┘
-                  │                  │ Yes
-                  │       ┌──────────▼────────────┐
-                  │       │  Does command match    │
-                  │       │  a forbidden pattern?  │
-                  │       └───┬────────────────┬───┘
-                  │       Yes │                │ No
-                  │           │     ┌──────────▼──────────┐
-                  │           │     │  Output JSON with    │
-                  │           │     │  "permissionDecision"│
-                  │           │     │  : "allow"           │
-                  │           │     └──────────┬──────────┘
-                  │           │                │
-                  ▼           ▼                ▼
-            ┌──────────┐ ┌──────────┐  ┌────────────┐
-            │ No output│ │ No output│  │ Auto-       │
-            │ = prompt │ │ = prompt │  │ approved!   │
-            │ user     │ │ user     │  └────────────┘
-            └──────────┘ └──────────┘
+```mermaid
+flowchart LR
+    subgraph skill ["Skill: /allow-until"]
+        S1[enable N] --> DB[("State file")]
+        S2[disable] --> DB
+    end
+
+    subgraph hook ["Hook: PreToolUse (Bash)"]
+        direction TB
+        C{{"Enabled &<br>not expired?"}}
+        C -- No --> D[Prompt user]
+        C -- Yes --> E{{"Forbidden<br>pattern?"}}
+        E -- Yes --> D
+        E -- No --> H[Auto-approved!]
+    end
+
+    DB -.->|read| C
 ```
 
 1. The plugin registers a `PreToolUse` hook for Bash commands
