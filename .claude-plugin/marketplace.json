@@ -49,6 +49,12 @@
       "description": "Recommend lesser-known uv features like PEP 723 inline scripts, uv run --with, uvx, and more",
       "source": "./uv-features",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/uv-features"
+    },
+    {
+      "name": "side-fork",
+      "description": "Fork the current Claude session and open the original session in a new tmux pane",
+      "source": "./side-fork",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/side-fork"
     }
   ]
 }
