@@ -6,7 +6,7 @@ description: |
   "download from volume", "volume ls", "volume files", "ボリューム", "ストレージ".
 metadata:
   author: pokutuna
-  version: 0.1.0
+  version: 0.1.1
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/volume-storage/scripts/volume_storage.sh:*)"
 ---
 
@@ -30,3 +30,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/volume-storage/scripts/volume_storage.sh sync ./out
 ```
 
 All `aws s3` subcommands and options are passed through.
+
+## Notes
+
+- `--recursive` and `sync` do not work reliably. Use `ls` to navigate directories and locate files before copying.
