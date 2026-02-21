@@ -33,7 +33,7 @@ DEFAULTS = {
     "pod": {
         "container_disk_size": 20,
         "gpu_count": 1,
-        "secure_cloud": False,
+        "secure_cloud": True,
         "ports": ["22/tcp"],
     },
     "volume": {
@@ -210,9 +210,8 @@ def build_remote_command(config: dict, config_dir: Path) -> str | None:
     init_config = config.get("init", {})
     script_path = init_config.get("script")
     commands = init_config.get("commands", [])
-    path_append = config.get("env", {}).get("PATH_APPEND")
 
-    has_init = script_path or commands or path_append
+    has_init = script_path or commands
     if not has_init:
         return None
 
@@ -220,9 +219,6 @@ def build_remote_command(config: dict, config_dir: Path) -> str | None:
 
     # Load RunPod env vars (.bashrc is not sourced for SSH remote commands)
     parts.append("source /etc/rp_environment 2>/dev/null")
-
-    if path_append:
-        parts.append(f'export PATH="$PATH:{path_append}"')
 
     if script_path:
         full_path = config_dir / script_path
@@ -236,7 +232,7 @@ def build_remote_command(config: dict, config_dir: Path) -> str | None:
         parts.append(cmd)
 
     # Stay in an interactive shell after init
-    parts.append("exec bash")
+    parts.append("exec bash -i")
     return " && ".join(parts)
 
 
@@ -248,16 +244,14 @@ def build_ssh_args(ssh_cmd: list[str], remote_command: str | None) -> list[str]:
 
 def ssh_in_tmux_window(ssh_cmd: list[str], remote_command: str | None) -> None:
     """Open a new local tmux window with an SSH connection."""
-    if not os.environ.get("TMUX"):
+    args = build_ssh_args(ssh_cmd, remote_command)
+    result = subprocess.run(["tmux", "new-window", shlex.join(args)])
+    if result.returncode != 0:
         print(
-            "Warning: Not running inside tmux. Falling back to direct SSH.",
+            "Warning: Failed to open tmux window. Falling back to direct SSH.",
             file=sys.stderr,
         )
-        args = build_ssh_args(ssh_cmd, remote_command)
         os.execvp(args[0], args)
-
-    args = build_ssh_args(ssh_cmd, remote_command)
-    subprocess.run(["tmux", "new-window", shlex.join(args)], check=True)
     print("Opened new tmux window with SSH connection.")
 
 
@@ -330,6 +324,11 @@ def main() -> None:
     ssh_cmd = parse_ssh_command(ssh_info)
     remote_command = build_remote_command(config, config_dir)
     use_tmux = config.get("init", {}).get("tmux_window", False)
+
+    if remote_command:
+        reconnect_args = build_ssh_args(ssh_cmd, remote_command)
+        print(f"Reconnect: {shlex.join(reconnect_args)}")
+        print()
 
     if use_tmux:
         ssh_in_tmux_window(ssh_cmd, remote_command)

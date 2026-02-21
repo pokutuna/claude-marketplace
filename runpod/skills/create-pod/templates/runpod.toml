@@ -20,8 +20,8 @@ image = "runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404"
 # Optional: Number of GPUs (default: 1)
 # gpu_count = 1
 
-# Optional: Use Secure Cloud (default: false)
-# secure_cloud = false
+# Optional: Use Secure Cloud (default: true)
+secure_cloud = true
 
 # Optional: Exposed ports (default: ["22/tcp"])
 # ports = ["22/tcp", "8888/http"]
@@ -48,7 +48,7 @@ image = "runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404"
 # commands = ["cd /workspace/my-project", "./scripts/hello.sh"]
 
 # Optional: Open SSH in a new local tmux window (default: false)
-# tmux_window = true
+tmux_window = true
 
 [env]
 # Google Cloud
@@ -74,8 +74,8 @@ GITHUB_TOKEN = "{{ RUNPOD_SECRET_GITHUB_TOKEN }}"
 # Jupyter
 JUPYTER_PASSWORD = "{{ RUNPOD_SECRET_JUPYTER_PASSWORD }}"
 
-# PATH (--ssh 時に $PATH に追加される、コロン区切りで複数指定可)
-# PATH_APPEND = "/workspace/tools/google-cloud-sdk/bin:/workspace/tools/gh/bin"
+# PATH (イメージのデフォルト PATH に追加するパスをコロン区切りで追記)
+# PATH = "/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/workspace/tools/google-cloud-sdk/bin:/workspace/tools/gh/bin"
 
 # Misc
 TOKENIZERS_PARALLELISM = "false"
