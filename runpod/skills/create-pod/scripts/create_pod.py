@@ -243,9 +243,14 @@ def build_ssh_args(ssh_cmd: list[str], remote_command: str | None) -> list[str]:
 
 
 def ssh_in_tmux_window(ssh_cmd: list[str], remote_command: str | None) -> None:
-    """Open a new local tmux window with an SSH connection."""
+    """Open a new local tmux window and run SSH via send-keys.
+
+    Opens a normal shell window so it stays open after SSH disconnects.
+    """
     args = build_ssh_args(ssh_cmd, remote_command)
-    result = subprocess.run(["tmux", "new-window", shlex.join(args)])
+    result = subprocess.run(
+        ["tmux", "new-window", ";", "send-keys", shlex.join(args), "Enter"]
+    )
     if result.returncode != 0:
         print(
             "Warning: Failed to open tmux window. Falling back to direct SSH.",
