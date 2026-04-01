@@ -55,6 +55,12 @@
       "description": "Fork the current Claude session and open the fork in a new tmux or screen window",
       "source": "./side-fork",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/side-fork"
+    },
+    {
+      "name": "kaggle-helper",
+      "description": "Kaggle discussion and notebook analysis commands for competition research",
+      "source": "./kaggle-helper",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/kaggle-helper"
     }
   ]
 }
