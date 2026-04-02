@@ -11,30 +11,55 @@ const _lists = app.lists();
 const LIST_INBOX = _lists[0].name();
 const LIST_TODAY = _lists[1].name();
 const LIST_ANYTIME = _lists[3].name();
-const LIST_LOGBOOK = _lists[7].name();
 
-// Today task IDs for flagging
-const _todayTodos = app.lists[LIST_TODAY].toDos();
-const _todayIdSet = {};
-for (let i = 0; i < _todayTodos.length; i++) {
-  _todayIdSet[_todayTodos[i].id()] = true;
+// Lazy-initialized Today ID set (only needed for read commands)
+let _todayIdSet = null;
+function todayIdSet() {
+  if (!_todayIdSet) {
+    _todayIdSet = {};
+    const todos = app.lists[LIST_TODAY].toDos();
+    for (let i = 0; i < todos.length; i++) _todayIdSet[todos[i].id()] = true;
+  }
+  return _todayIdSet;
+}
+
+// ---------------------------------------------------------------------------
+// AppleScript helper — JXA move/status/delete don't work directly
+// ---------------------------------------------------------------------------
+function runAS(script) {
+  const sh = Application.currentApplication();
+  sh.includeStandardAdditions = true;
+  return sh.doShellScript("osascript -e '" + script + "'");
+}
+
+function thingsAS(body) {
+  return runAS('tell application "Things3" to ' + body);
+}
+
+function escapeAS(s) {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function todoRef(taskId) {
+  return '(to do id "' + escapeAS(taskId) + '")';
 }
 
 // ---------------------------------------------------------------------------
 // Serialize
 // ---------------------------------------------------------------------------
 
+function formatDate(d) {
+  var y = d.getFullYear();
+  var m = ("0" + (d.getMonth() + 1)).slice(-2);
+  var day = ("0" + d.getDate()).slice(-2);
+  return y + "-" + m + "-" + day;
+}
+
 function serializeTask(t) {
   let dueDate = "";
   try {
     const d = t.dueDate();
-    if (d) {
-      // Format in JST (Asia/Tokyo, UTC+9)
-      var y = d.getFullYear();
-      var m = ("0" + (d.getMonth() + 1)).slice(-2);
-      var day = ("0" + d.getDate()).slice(-2);
-      dueDate = y + "-" + m + "-" + day;
-    }
+    if (d) dueDate = formatDate(d);
   } catch (e) {}
 
   let projName = "";
@@ -56,7 +81,7 @@ function serializeTask(t) {
     tagNames: t.tagNames() || "",
     projectName: projName,
     areaName: areaName,
-    isToday: !!_todayIdSet[t.id()],
+    isToday: !!todayIdSet()[t.id()],
   };
 }
 
@@ -68,8 +93,7 @@ function displayName(t) {
   if (t.name) return t.name;
   if (t.notes) {
     var first = t.notes.split("\n")[0];
-    var truncated = first.length > 20 ? first.slice(0, 20) + "..." : first;
-    return "(note) " + truncated;
+    return "(note) " + (first.length > 20 ? first.slice(0, 20) + "..." : first);
   }
   return "(untitled)";
 }
@@ -156,6 +180,47 @@ function listTodos(todos, includeDone, offset, limit) {
 }
 
 // ---------------------------------------------------------------------------
+// Tag helpers
+// ---------------------------------------------------------------------------
+
+function parseCsv(str) {
+  return str
+    .split(",")
+    .map(function (s) {
+      return s.replace(/^\s+|\s+$/g, "");
+    })
+    .filter(Boolean);
+}
+
+function addTags(todo, tagNamesStr) {
+  var existing = {};
+  var current = todo.tagNames() || "";
+  if (current) {
+    var parts = current.split(", ");
+    for (var i = 0; i < parts.length; i++) existing[parts[i]] = true;
+  }
+  var add = parseCsv(tagNamesStr);
+  for (var i = 0; i < add.length; i++) existing[add[i]] = true;
+  var all = [];
+  for (var k in existing) all.push(k);
+  todo.tagNames = all.join(", ");
+}
+
+function removeTags(todo, tagNamesStr) {
+  var current = todo.tagNames() || "";
+  if (!current) return;
+  var removeSet = {};
+  var remove = parseCsv(tagNamesStr);
+  for (var i = 0; i < remove.length; i++) removeSet[remove[i]] = true;
+  var kept = [];
+  var parts = current.split(", ");
+  for (var i = 0; i < parts.length; i++) {
+    if (!removeSet[parts[i]]) kept.push(parts[i]);
+  }
+  todo.tagNames = kept.join(", ");
+}
+
+// ---------------------------------------------------------------------------
 // CLI argument parsing
 // ---------------------------------------------------------------------------
 
@@ -168,9 +233,12 @@ function parseArgs(argv) {
     name: undefined,
     notes: undefined,
     tags: undefined,
+    addTags: undefined,
+    removeTags: undefined,
     project: undefined,
     area: undefined,
-    today: false,
+    today: undefined,
+    due: undefined,
   };
   const positional = [];
 
@@ -194,6 +262,12 @@ function parseArgs(argv) {
       case "--tags":
         opts.tags = argv[++i];
         break;
+      case "--add-tags":
+        opts.addTags = argv[++i];
+        break;
+      case "--remove-tags":
+        opts.removeTags = argv[++i];
+        break;
       case "--project":
         opts.project = argv[++i];
         break;
@@ -202,6 +276,9 @@ function parseArgs(argv) {
         break;
       case "--today":
         opts.today = true;
+        break;
+      case "--no-today":
+        opts.today = false;
         break;
       case "--due":
         opts.due = argv[++i];
@@ -217,26 +294,15 @@ function parseArgs(argv) {
 // Commands
 // ---------------------------------------------------------------------------
 
-function cmdToday(opts) {
-  const todos = app.lists[LIST_TODAY].toDos();
+function cmdList(listName, title, opts) {
+  const todos = app.lists[listName].toDos();
   const { tasks, total } = listTodos(
     todos,
     opts.includeDone,
     opts.offset,
     opts.limit,
   );
-  return formatTaskList("Today", tasks, total, opts.offset, opts.limit);
-}
-
-function cmdInbox(opts) {
-  const todos = app.lists[LIST_INBOX].toDos();
-  const { tasks, total } = listTodos(
-    todos,
-    opts.includeDone,
-    opts.offset,
-    opts.limit,
-  );
-  return formatTaskList("Inbox", tasks, total, opts.offset, opts.limit);
+  return formatTaskList(title, tasks, total, opts.offset, opts.limit);
 }
 
 function cmdProject(name, opts) {
@@ -273,7 +339,6 @@ function cmdDetail(nameOrId) {
     t = app.toDos.byId(nameOrId);
     t.name(); // test access
   } catch (e) {
-    // Fall back to name search
     t = app.toDos.whose({ name: nameOrId })[0];
   }
   return taskDetail(serializeTask(t));
@@ -313,32 +378,11 @@ function cmdProjects() {
   return lines.join("\n");
 }
 
-function cmdSetToday(taskId, enable) {
-  const t = app.toDos.byId(taskId);
-  const name = t.name();
-  const dest = enable ? LIST_TODAY : LIST_ANYTIME;
-  // JXA app.move() doesn't work with Things — use AppleScript via shell
-  const shellApp = Application.currentApplication();
-  shellApp.includeStandardAdditions = true;
-  const escaped = taskId.replace(/"/g, '\\"');
-  const escapedDest = dest.replace(/"/g, '\\"');
-  shellApp.doShellScript(
-    'osascript -e \'tell application "Things3" to move (to do id "' +
-      escaped +
-      '") to list "' +
-      escapedDest +
-      "\"'",
-  );
-  const action = enable ? "moved to Today" : "removed from Today";
-  return name + " " + action + ".";
-}
-
 function cmdCreate(title, opts) {
   const props = { name: title };
   if (opts.notes) props.notes = opts.notes;
   if (opts.tags) props.tagNames = opts.tags;
   if (opts.due) {
-    // Parse as local date (YYYY-MM-DD)
     var parts = opts.due.split("-");
     props.dueDate = new Date(
       parseInt(parts[0], 10),
@@ -347,7 +391,6 @@ function cmdCreate(title, opts) {
     );
   }
 
-  // Determine container: project > area > inbox
   let container = app.lists[LIST_INBOX];
   if (opts.project) container = app.projects[opts.project];
   else if (opts.area) container = app.areas[opts.area];
@@ -358,18 +401,9 @@ function cmdCreate(title, opts) {
     at: container,
   });
 
-  // Move to Today if requested
   if (opts.today) {
-    const shellApp = Application.currentApplication();
-    shellApp.includeStandardAdditions = true;
-    const escaped = t.id().replace(/"/g, '\\"');
-    const escapedDest = LIST_TODAY.replace(/"/g, '\\"');
-    shellApp.doShellScript(
-      'osascript -e \'tell application "Things3" to move (to do id "' +
-        escaped +
-        '") to list "' +
-        escapedDest +
-        "\"'",
+    thingsAS(
+      "move " + todoRef(t.id()) + ' to list "' + escapeAS(LIST_TODAY) + '"',
     );
   }
 
@@ -378,80 +412,93 @@ function cmdCreate(title, opts) {
 
 function cmdUpdate(taskId, opts) {
   const t = app.toDos.byId(taskId);
-  if (opts.name !== undefined) t.name = opts.name;
-  if (opts.notes !== undefined) t.notes = opts.notes;
-  return "Updated task **" + t.name() + "**.";
+  const changes = [];
+
+  if (opts.name !== undefined) {
+    t.name = opts.name;
+    changes.push("name");
+  }
+  if (opts.notes !== undefined) {
+    t.notes = opts.notes;
+    changes.push("notes");
+  }
+  if (opts.due !== undefined) {
+    var parts = opts.due.split("-");
+    t.dueDate = new Date(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1,
+      parseInt(parts[2], 10),
+    );
+    changes.push("due date");
+  }
+  if (opts.addTags !== undefined) {
+    addTags(t, opts.addTags);
+    changes.push("tags (added)");
+  }
+  if (opts.removeTags !== undefined) {
+    removeTags(t, opts.removeTags);
+    changes.push("tags (removed)");
+  }
+  if (opts.tags !== undefined) {
+    t.tagNames = opts.tags;
+    changes.push("tags");
+  }
+  if (opts.today === true) {
+    thingsAS(
+      "move " + todoRef(taskId) + ' to list "' + escapeAS(LIST_TODAY) + '"',
+    );
+    changes.push("moved to Today");
+  } else if (opts.today === false) {
+    thingsAS(
+      "move " + todoRef(taskId) + ' to list "' + escapeAS(LIST_ANYTIME) + '"',
+    );
+    changes.push("removed from Today");
+  }
+  if (opts.area !== undefined) {
+    if (opts.area === "none") {
+      thingsAS(
+        "move " + todoRef(taskId) + ' to list "' + escapeAS(LIST_INBOX) + '"',
+      );
+      changes.push("moved to Inbox");
+    } else {
+      thingsAS(
+        "move " + todoRef(taskId) + ' to area "' + escapeAS(opts.area) + '"',
+      );
+      changes.push("area → " + opts.area);
+    }
+  }
+  if (opts.project !== undefined) {
+    thingsAS(
+      "move " +
+        todoRef(taskId) +
+        ' to project "' +
+        escapeAS(opts.project) +
+        '"',
+    );
+    changes.push("project → " + opts.project);
+  }
+
+  if (changes.length === 0) return "No changes specified.";
+  return "Updated **" + t.name() + "**: " + changes.join(", ") + ".";
 }
 
-function cmdSetArea(taskId, areaName) {
+function cmdSetStatus(taskId, status) {
   const t = app.toDos.byId(taskId);
   const name = t.name();
-  const shellApp = Application.currentApplication();
-  shellApp.includeStandardAdditions = true;
-  const escapedId = taskId.replace(/"/g, '\\"');
-
-  if (!areaName || areaName === "none") {
-    // Move to Inbox (remove from area)
-    const escapedDest = LIST_INBOX.replace(/"/g, '\\"');
-    shellApp.doShellScript(
-      'osascript -e \'tell application "Things3" to move (to do id "' +
-        escapedId +
-        '") to list "' +
-        escapedDest +
-        "\"'",
-    );
-    return name + " moved to Inbox (removed from area).";
-  } else {
-    // Move to specified area
-    const escapedArea = areaName.replace(/"/g, '\\"');
-    shellApp.doShellScript(
-      'osascript -e \'tell application "Things3" to move (to do id "' +
-        escapedId +
-        '") to area "' +
-        escapedArea +
-        "\"'",
-    );
-    return name + " moved to area **" + areaName + "**.";
-  }
+  thingsAS("set status of " + todoRef(taskId) + " to " + status);
+  const labels = {
+    completed: "Completed",
+    canceled: "Canceled",
+    open: "Reopened",
+  };
+  return (labels[status] || status) + ": **" + name + "**";
 }
 
-function cmdAddTags(taskId, tagNamesStr) {
+function cmdDelete(taskId) {
   const t = app.toDos.byId(taskId);
-  const existing = t.tagNames() || "";
-  const existingSet = {};
-  if (existing) {
-    var parts = existing.split(", ");
-    for (var i = 0; i < parts.length; i++) existingSet[parts[i]] = true;
-  }
-  var newTags = tagNamesStr.split(",");
-  for (var i = 0; i < newTags.length; i++) {
-    var tag = newTags[i].replace(/^\s+|\s+$/g, "");
-    if (tag) existingSet[tag] = true;
-  }
-  var allTags = [];
-  for (var k in existingSet) allTags.push(k);
-  t.tagNames = allTags.join(", ");
-  return "Tags on **" + t.name() + "**: " + formatTags(t.tagNames());
-}
-
-function cmdRemoveTags(taskId, tagNamesStr) {
-  const t = app.toDos.byId(taskId);
-  const existing = t.tagNames() || "";
-  if (!existing) return "**" + t.name() + "** has no tags.";
-  var removeSet = {};
-  var parts = tagNamesStr.split(",");
-  for (var i = 0; i < parts.length; i++) {
-    var tag = parts[i].replace(/^\s+|\s+$/g, "");
-    if (tag) removeSet[tag] = true;
-  }
-  var kept = [];
-  var existingParts = existing.split(", ");
-  for (var i = 0; i < existingParts.length; i++) {
-    if (!removeSet[existingParts[i]]) kept.push(existingParts[i]);
-  }
-  t.tagNames = kept.join(", ");
-  var result = t.tagNames() ? formatTags(t.tagNames()) : "(none)";
-  return "Tags on **" + t.name() + "**: " + result;
+  const name = t.name();
+  thingsAS("delete " + todoRef(taskId));
+  return "Deleted: **" + name + "** (moved to Trash)";
 }
 
 // ---------------------------------------------------------------------------
@@ -469,12 +516,15 @@ function usage() {
     "  area        <name> [--done] [--offset N] [--limit N]",
     "  detail      <name-or-id>",
     "  projects    (list projects and areas)",
-    '  create      <title> [--notes "..."] [--tags "t1, t2"] [--project "..."] [--area "..."] [--today]',
-    "  set-today   <task-id> on|off",
-    '  update      <task-id> [--name "..."] [--notes "..."]',
-    "  set-area    <task-id> <area-name|none>",
-    '  add-tags    <task-id> "tag1, tag2"',
-    '  remove-tags <task-id> "tag1, tag2"',
+    '  create      <title> [--notes "..."] [--tags "t1, t2"] [--due YYYY-MM-DD]',
+    '              [--project "..."] [--area "..."] [--today]',
+    '  update      <task-id> [--name "..."] [--notes "..."] [--due YYYY-MM-DD]',
+    '              [--tags "..."] [--add-tags "..."] [--remove-tags "..."]',
+    '              [--today] [--no-today] [--area "..."|none] [--project "..."]',
+    "  complete    <task-id>",
+    "  cancel      <task-id>",
+    "  reopen      <task-id>",
+    "  delete      <task-id>",
   ].join("\n");
 }
 
@@ -487,9 +537,9 @@ function run(argv) {
 
   switch (cmd) {
     case "today":
-      return cmdToday(opts);
+      return cmdList(LIST_TODAY, "Today", opts);
     case "inbox":
-      return cmdInbox(opts);
+      return cmdList(LIST_INBOX, "Inbox", opts);
     case "project":
       return cmdProject(positional[0], opts);
     case "area":
@@ -498,20 +548,18 @@ function run(argv) {
       return cmdDetail(positional[0]);
     case "projects":
       return cmdProjects();
-    case "set-today": {
-      const enable = ["on", "yes", "true", "1"].indexOf(positional[1]) !== -1;
-      return cmdSetToday(positional[0], enable);
-    }
     case "create":
       return cmdCreate(positional[0], opts);
     case "update":
       return cmdUpdate(positional[0], opts);
-    case "set-area":
-      return cmdSetArea(positional[0], positional[1]);
-    case "add-tags":
-      return cmdAddTags(positional[0], positional[1]);
-    case "remove-tags":
-      return cmdRemoveTags(positional[0], positional[1]);
+    case "complete":
+      return cmdSetStatus(positional[0], "completed");
+    case "cancel":
+      return cmdSetStatus(positional[0], "canceled");
+    case "reopen":
+      return cmdSetStatus(positional[0], "open");
+    case "delete":
+      return cmdDelete(positional[0]);
     default:
       return usage();
   }
