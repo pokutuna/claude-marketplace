@@ -1,0 +1,16 @@
+{
+  "name": "toggle-plugin",
+  "description": "Toggle Claude Code plugins enabled/disabled per project via .claude/settings.json",
+  "version": "0.1.0",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/toggle-plugin",
+  "license": "MIT",
+  "keywords": [
+    "plugins",
+    "settings",
+    "toggle",
+    "project"
+  ]
+}
