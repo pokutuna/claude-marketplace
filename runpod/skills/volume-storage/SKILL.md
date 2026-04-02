@@ -7,7 +7,7 @@ description: |
 metadata:
   author: pokutuna
   version: 0.1.1
-allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/volume-storage/scripts/volume_storage.sh:*)"
+allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/volume-storage/scripts/volume_storage.sh *)"
 ---
 
 # RunPod Volume Storage

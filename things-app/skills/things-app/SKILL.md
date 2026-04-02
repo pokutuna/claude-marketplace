@@ -8,7 +8,7 @@ metadata:
   author: pokutuna
   version: 0.1.0
   compatibility: macOS with Things 3 installed
-allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js:*)"
+allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
 
 # Things 3
