@@ -6,7 +6,7 @@ description: |
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.2.0
+  version: 0.4.0
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
@@ -14,125 +14,55 @@ allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things
 # Things 3
 
 Read and update tasks in Things 3 via JXA (JavaScript for Automation).
-
-## Prerequisites
-
-- macOS with Things 3 installed
+Requires macOS with Things 3 installed.
 
 ## Script
 
-All commands use a single script:
+All commands use a single script. Run without arguments to see usage:
 
 ```
+osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js
 osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js <command> [options]
 ```
 
-## Read Commands
+## Typical Workflows
 
-### today — Today's tasks
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js today
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js today --done
-```
-
-### inbox — Inbox tasks
+### Inbox の仕分け
+1. `inbox` でタスク一覧を取得
+2. 各タスクを適切な project/area に振り分け、期日やタグを設定
+3. 今日やるものは Today に移動
 
 ```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js inbox
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js inbox --limit 10
+things.js inbox
+things.js update "タスクID" --project "プロジェクト名" --due "2026-04-10" --today
+things.js update "タスクID" --area "エリア名" --add-tags "tag1"
 ```
 
-### projects — List all projects and areas
+### Today のタスク処理
+1. `today` で今日のタスク一覧を確認し、ユーザーに共有する
+2. ユーザーと会話しながらタスクを進め、完了したら `complete` で消化
 
 ```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js projects
+things.js today
+things.js complete "タスクID"
 ```
 
-### project / area — Tasks in a specific project or area
+### タスク作成
+1. ユーザーの依頼や会話の中で出てきた TODO を `create` で登録
+2. project/area/tags/due を適切に設定して仕分け済みの状態で作る
 
 ```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js project "プロジェクト名"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js area "エリア名"
+things.js create "タスク名" --project "プロジェクト名" --due "2026-04-15" --today
+things.js create "タスク名" --area "エリア名" --tags "tag1, tag2"
 ```
 
-### detail — Single task detail (by ID or name)
+## Key Behaviors
 
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js detail "タスクID"
-```
-
-IDs are shown in list output as `[ID: ...]`. Use them directly.
-
-## Create Commands
-
-### create — Create a new task
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --notes "メモ" --due "2026-04-10" --tags "tag1, tag2"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --project "プロジェクト名"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --area "エリア名" --today
-```
-
-| Option | Description |
-|--------|-------------|
-| `--notes "..."` | Add notes |
-| `--due "YYYY-MM-DD"` | Set deadline |
-| `--tags "t1, t2"` | Comma-separated tag names |
-| `--project "..."` | Add to project |
-| `--area "..."` | Add to area |
-| `--today` | Also move to Today |
-
-Default destination is Inbox. `--project` and `--area` override it.
-
-## Update Commands
-
-### set-today — Move task to/from Today
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-today "タスクID" on
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-today "タスクID" off
-```
-
-### update — Update task title or notes
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --name "新しいタイトル"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --notes "新しいメモ"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --name "タイトル" --notes "メモ"
-```
-
-### set-area — Move task to/from an area
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-area "タスクID" "エリア名"
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-area "タスクID" none
-```
-
-`none` を指定すると Inbox に移動 (エリアから外す).
-
-### add-tags — Add tags to a task
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js add-tags "タスクID" "tag1, tag2"
-```
-
-既存のタグは保持したまま追加する.
-
-### remove-tags — Remove tags from a task
-
-```bash
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js remove-tags "タスクID" "tag1, tag2"
-```
-
-## Common Options (for list commands)
-
-| Option | Description |
-|--------|-------------|
-| `--done` | Include completed/canceled tasks |
-| `--offset N` | Skip first N tasks (paging) |
-| `--limit N` | Max tasks to return (default: 30) |
+- IDs are shown in list output as `[ID: ...]`. Use them for detail/update/status commands. Falls back to name search if ID is not found.
+- Default destination for `create` is Inbox. `--project` and `--area` override it.
+- `update` accepts multiple options in a single call. `--area none` removes from area (moves to Inbox).
+- Update/status/delete commands modify actual tasks — always confirm with the user before running.
+- Paging: use `--offset` and `--limit` for large lists (e.g. inbox).
 
 ## Output Format
 
@@ -142,11 +72,10 @@ osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.j
 - タスク名 (Today, Due: 2025-01-15) #tag1, #tag2 [ID: abc123]
 ```
 
-Components:
 - Task name. If title is empty, shows `(note) first 20 chars...` from notes
 - Parentheses: Today flag, due date, done/canceled status
 - Tags as `#tag`
-- `[ID: ...]` for use with detail/update/set-today/create commands
+- `[ID: ...]` for use with detail/update commands
 
 ### Detail
 
@@ -164,9 +93,3 @@ Area: エリア名
 Notes:
 ノート内容
 ```
-
-## Important Notes
-
-- Update commands modify actual tasks — always confirm with the user before running
-- List names are resolved dynamically (works in any locale)
-- Paging: use `--offset` and `--limit` for large lists (e.g. inbox)
