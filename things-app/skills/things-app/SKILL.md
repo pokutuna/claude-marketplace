@@ -6,9 +6,9 @@ description: |
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.4.0
+  version: 0.5.0
   compatibility: macOS with Things 3 installed
-allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
+allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
 
 # Things 3
@@ -21,8 +21,8 @@ Requires macOS with Things 3 installed.
 All commands use a single script. Run without arguments to see usage:
 
 ```
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js
-osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js <command> [options]
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js <command> [options]
 ```
 
 ## Typical Workflows
@@ -33,9 +33,9 @@ osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.j
 3. 今日やるものは Today に移動
 
 ```bash
-things.js inbox
-things.js update "タスクID" --project "プロジェクト名" --due "2026-04-10" --today
-things.js update "タスクID" --area "エリア名" --add-tags "tag1"
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js inbox
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --project "プロジェクト名" --due "2026-04-10" --today
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --area "エリア名" --add-tags "tag1"
 ```
 
 ### Today のタスク処理
@@ -43,8 +43,8 @@ things.js update "タスクID" --area "エリア名" --add-tags "tag1"
 2. ユーザーと会話しながらタスクを進め、完了したら `complete` で消化
 
 ```bash
-things.js today
-things.js complete "タスクID"
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js today
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js complete "タスクID"
 ```
 
 ### タスク作成
@@ -52,8 +52,8 @@ things.js complete "タスクID"
 2. project/area/tags/due を適切に設定して仕分け済みの状態で作る
 
 ```bash
-things.js create "タスク名" --project "プロジェクト名" --due "2026-04-15" --today
-things.js create "タスク名" --area "エリア名" --tags "tag1, tag2"
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --project "プロジェクト名" --due "2026-04-15" --today
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --area "エリア名" --tags "tag1, tag2"
 ```
 
 ## Key Behaviors
