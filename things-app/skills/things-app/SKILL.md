@@ -6,7 +6,7 @@ description: |
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.1.0
+  version: 0.2.0
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
@@ -101,6 +101,29 @@ osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.j
 osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --name "新しいタイトル"
 osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --notes "新しいメモ"
 osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --name "タイトル" --notes "メモ"
+```
+
+### set-area — Move task to/from an area
+
+```bash
+osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-area "タスクID" "エリア名"
+osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js set-area "タスクID" none
+```
+
+`none` を指定すると Inbox に移動 (エリアから外す).
+
+### add-tags — Add tags to a task
+
+```bash
+osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js add-tags "タスクID" "tag1, tag2"
+```
+
+既存のタグは保持したまま追加する.
+
+### remove-tags — Remove tags from a task
+
+```bash
+osascript -l JavaScript ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js remove-tags "タスクID" "tag1, tag2"
 ```
 
 ## Common Options (for list commands)

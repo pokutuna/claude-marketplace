@@ -383,6 +383,77 @@ function cmdUpdate(taskId, opts) {
   return "Updated task **" + t.name() + "**.";
 }
 
+function cmdSetArea(taskId, areaName) {
+  const t = app.toDos.byId(taskId);
+  const name = t.name();
+  const shellApp = Application.currentApplication();
+  shellApp.includeStandardAdditions = true;
+  const escapedId = taskId.replace(/"/g, '\\"');
+
+  if (!areaName || areaName === "none") {
+    // Move to Inbox (remove from area)
+    const escapedDest = LIST_INBOX.replace(/"/g, '\\"');
+    shellApp.doShellScript(
+      'osascript -e \'tell application "Things3" to move (to do id "' +
+        escapedId +
+        '") to list "' +
+        escapedDest +
+        "\"'",
+    );
+    return name + " moved to Inbox (removed from area).";
+  } else {
+    // Move to specified area
+    const escapedArea = areaName.replace(/"/g, '\\"');
+    shellApp.doShellScript(
+      'osascript -e \'tell application "Things3" to move (to do id "' +
+        escapedId +
+        '") to area "' +
+        escapedArea +
+        "\"'",
+    );
+    return name + " moved to area **" + areaName + "**.";
+  }
+}
+
+function cmdAddTags(taskId, tagNamesStr) {
+  const t = app.toDos.byId(taskId);
+  const existing = t.tagNames() || "";
+  const existingSet = {};
+  if (existing) {
+    var parts = existing.split(", ");
+    for (var i = 0; i < parts.length; i++) existingSet[parts[i]] = true;
+  }
+  var newTags = tagNamesStr.split(",");
+  for (var i = 0; i < newTags.length; i++) {
+    var tag = newTags[i].replace(/^\s+|\s+$/g, "");
+    if (tag) existingSet[tag] = true;
+  }
+  var allTags = [];
+  for (var k in existingSet) allTags.push(k);
+  t.tagNames = allTags.join(", ");
+  return "Tags on **" + t.name() + "**: " + formatTags(t.tagNames());
+}
+
+function cmdRemoveTags(taskId, tagNamesStr) {
+  const t = app.toDos.byId(taskId);
+  const existing = t.tagNames() || "";
+  if (!existing) return "**" + t.name() + "** has no tags.";
+  var removeSet = {};
+  var parts = tagNamesStr.split(",");
+  for (var i = 0; i < parts.length; i++) {
+    var tag = parts[i].replace(/^\s+|\s+$/g, "");
+    if (tag) removeSet[tag] = true;
+  }
+  var kept = [];
+  var existingParts = existing.split(", ");
+  for (var i = 0; i < existingParts.length; i++) {
+    if (!removeSet[existingParts[i]]) kept.push(existingParts[i]);
+  }
+  t.tagNames = kept.join(", ");
+  var result = t.tagNames() ? formatTags(t.tagNames()) : "(none)";
+  return "Tags on **" + t.name() + "**: " + result;
+}
+
 // ---------------------------------------------------------------------------
 // Usage
 // ---------------------------------------------------------------------------
@@ -401,6 +472,9 @@ function usage() {
     '  create      <title> [--notes "..."] [--tags "t1, t2"] [--project "..."] [--area "..."] [--today]',
     "  set-today   <task-id> on|off",
     '  update      <task-id> [--name "..."] [--notes "..."]',
+    "  set-area    <task-id> <area-name|none>",
+    '  add-tags    <task-id> "tag1, tag2"',
+    '  remove-tags <task-id> "tag1, tag2"',
   ].join("\n");
 }
 
@@ -432,6 +506,12 @@ function run(argv) {
       return cmdCreate(positional[0], opts);
     case "update":
       return cmdUpdate(positional[0], opts);
+    case "set-area":
+      return cmdSetArea(positional[0], positional[1]);
+    case "add-tags":
+      return cmdAddTags(positional[0], positional[1]);
+    case "remove-tags":
+      return cmdRemoveTags(positional[0], positional[1]);
     default:
       return usage();
   }

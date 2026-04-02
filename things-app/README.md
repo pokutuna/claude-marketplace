@@ -13,6 +13,8 @@ Read and update tasks in [Things 3](https://culturedcode.com/things/) via JXA (J
 - Create new tasks with notes, due dates, tags, and project/area assignment
 - Update task titles and notes
 - Move tasks to/from Today
+- Move tasks to/from areas
+- Add and remove tags
 
 ## Commands
 
@@ -27,6 +29,9 @@ Read and update tasks in [Things 3](https://culturedcode.com/things/) via JXA (J
 | `create <title>` | Create a new task |
 | `update <id>` | Update task title or notes |
 | `set-today <id> on/off` | Move task to/from Today |
+| `set-area <id> <name/none>` | Move task to/from an area |
+| `add-tags <id> "t1, t2"` | Add tags to a task |
+| `remove-tags <id> "t1, t2"` | Remove tags from a task |
 
 All list commands support `--done`, `--offset N`, and `--limit N` options.
 
