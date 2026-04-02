@@ -61,6 +61,12 @@
       "description": "Kaggle discussion and notebook analysis commands for competition research",
       "source": "./kaggle-helper",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/kaggle-helper"
+    },
+    {
+      "name": "things-app",
+      "description": "Read and update tasks in Things 3 via AppleScript/JXA",
+      "source": "./things-app",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/things-app"
     }
   ]
 }

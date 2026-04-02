@@ -45,3 +45,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [uv-features](./uv-features/) | Recommend lesser-known uv features (PEP 723, uvx, uv run --with, etc.) |
 | [side-fork](./side-fork/) | Fork session and open original in a new tmux pane (new pane = experimental branch) |
 | [kaggle-helper](./kaggle-helper/) | Kaggle discussion and notebook analysis for competition research |
+| [things-app](./things-app/) | Read and update tasks in Things 3 via JXA |
