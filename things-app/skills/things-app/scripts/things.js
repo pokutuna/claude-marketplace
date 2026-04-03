@@ -56,6 +56,12 @@ function formatDate(d) {
 }
 
 function serializeTask(t) {
+  let whenDate = "";
+  try {
+    const w = t.activationDate();
+    if (w) whenDate = formatDate(w);
+  } catch (e) {}
+
   let dueDate = "";
   try {
     const d = t.dueDate();
@@ -77,6 +83,7 @@ function serializeTask(t) {
     name: t.name(),
     status: t.status(),
     notes: t.notes() || "",
+    whenDate: whenDate,
     dueDate: dueDate,
     tagNames: t.tagNames() || "",
     projectName: projName,
@@ -111,6 +118,7 @@ function formatTags(tagNames) {
 function taskOneline(t) {
   const parts = [];
   if (t.isToday) parts.push("Today");
+  if (t.whenDate) parts.push("When: " + t.whenDate);
   if (t.dueDate) parts.push("Due: " + t.dueDate);
   if (t.status === "completed") parts.push("done");
   else if (t.status === "canceled") parts.push("canceled");
@@ -128,6 +136,7 @@ function taskDetail(t) {
   lines.push("ID: " + t.id);
   lines.push("Status: " + t.status);
   lines.push("Today: " + (t.isToday ? "Yes" : "No"));
+  if (t.whenDate) lines.push("When: " + t.whenDate);
   if (t.dueDate) lines.push("Due: " + t.dueDate);
   if (t.tagNames) lines.push("Tags: " + formatTags(t.tagNames));
   if (t.projectName) lines.push("Project: " + t.projectName);
@@ -238,6 +247,7 @@ function parseArgs(argv) {
     project: undefined,
     area: undefined,
     today: undefined,
+    when: undefined,
     due: undefined,
   };
   const positional = [];
@@ -279,6 +289,9 @@ function parseArgs(argv) {
         break;
       case "--no-today":
         opts.today = false;
+        break;
+      case "--when":
+        opts.when = argv[++i];
         break;
       case "--due":
         opts.due = argv[++i];
@@ -401,6 +414,17 @@ function cmdCreate(title, opts) {
     at: container,
   });
 
+  if (opts.when) {
+    var wp = opts.when.split("-");
+    app.schedule(t, {
+      for: new Date(
+        parseInt(wp[0], 10),
+        parseInt(wp[1], 10) - 1,
+        parseInt(wp[2], 10),
+      ),
+    });
+  }
+
   if (opts.today) {
     thingsAS(
       "move " + todoRef(t.id()) + ' to list "' + escapeAS(LIST_TODAY) + '"',
@@ -421,6 +445,17 @@ function cmdUpdate(taskId, opts) {
   if (opts.notes !== undefined) {
     t.notes = opts.notes;
     changes.push("notes");
+  }
+  if (opts.when !== undefined) {
+    var wp = opts.when.split("-");
+    app.schedule(t, {
+      for: new Date(
+        parseInt(wp[0], 10),
+        parseInt(wp[1], 10) - 1,
+        parseInt(wp[2], 10),
+      ),
+    });
+    changes.push("when → " + opts.when);
   }
   if (opts.due !== undefined) {
     var parts = opts.due.split("-");
@@ -516,10 +551,10 @@ function usage() {
     "  area        <name> [--done] [--offset N] [--limit N]",
     "  detail      <name-or-id>",
     "  projects    (list projects and areas)",
-    '  create      <title> [--notes "..."] [--tags "t1, t2"] [--due YYYY-MM-DD]',
-    '              [--project "..."] [--area "..."] [--today]',
-    '  update      <task-id> [--name "..."] [--notes "..."] [--due YYYY-MM-DD]',
-    '              [--tags "..."] [--add-tags "..."] [--remove-tags "..."]',
+    '  create      <title> [--notes "..."] [--tags "t1, t2"] [--when YYYY-MM-DD]',
+    '              [--due YYYY-MM-DD] [--project "..."] [--area "..."] [--today]',
+    '  update      <task-id> [--name "..."] [--notes "..."] [--when YYYY-MM-DD]',
+    '              [--due YYYY-MM-DD] [--tags "..."] [--add-tags "..."] [--remove-tags "..."]',
     '              [--today] [--no-today] [--area "..."|none] [--project "..."]',
     "  complete    <task-id>",
     "  cancel      <task-id>",

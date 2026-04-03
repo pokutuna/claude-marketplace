@@ -6,7 +6,7 @@ description: |
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.5.0
+  version: 0.6.0
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
@@ -34,7 +34,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js <command> [options]
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js inbox
-${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --project "プロジェクト名" --due "2026-04-10" --today
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --project "プロジェクト名" --when "2026-04-10" --due "2026-04-16"
 ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js update "タスクID" --area "エリア名" --add-tags "tag1"
 ```
 
@@ -52,14 +52,15 @@ ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js complete "タスクID"
 2. project/area/tags/due を適切に設定して仕分け済みの状態で作る
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --project "プロジェクト名" --due "2026-04-15" --today
-${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --area "エリア名" --tags "tag1, tag2"
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --project "プロジェクト名" --when "2026-04-15" --due "2026-04-21"
+${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" --area "エリア名" --tags "tag1, tag2" --today
 ```
 
 ## Key Behaviors
 
 - IDs are shown in list output as `[ID: ...]`. Use them for detail/update/status commands. Falls back to name search if ID is not found.
 - Default destination for `create` is Inbox. `--project` and `--area` override it.
+- `--when YYYY-MM-DD` sets the activation date. The task appears in Today on that date automatically.
 - `update` accepts multiple options in a single call. `--area none` removes from area (moves to Inbox).
 - Update/status/delete commands modify actual tasks — always confirm with the user before running.
 - Paging: use `--offset` and `--limit` for large lists (e.g. inbox).
@@ -69,11 +70,11 @@ ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" 
 ### List (one-line per task)
 
 ```
-- タスク名 (Today, Due: 2025-01-15) #tag1, #tag2 [ID: abc123]
+- タスク名 (Today, When: 2025-01-15, Due: 2025-01-21) #tag1, #tag2 [ID: abc123]
 ```
 
 - Task name. If title is empty, shows `(note) first 20 chars...` from notes
-- Parentheses: Today flag, due date, done/canceled status
+- Parentheses: Today flag, when date, due date, done/canceled status
 - Tags as `#tag`
 - `[ID: ...]` for use with detail/update commands
 
@@ -85,7 +86,8 @@ ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js create "タスク名" 
 ID: abc123
 Status: open
 Today: Yes
-Due: 2025-01-15
+When: 2025-01-15
+Due: 2025-01-21
 Tags: #tag1, #tag2
 Project: プロジェクト名
 Area: エリア名
