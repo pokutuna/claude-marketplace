@@ -58,7 +58,7 @@
     },
     {
       "name": "kaggle-helper",
-      "description": "Kaggle discussion and notebook analysis commands for competition research",
+      "description": "Kaggle competition research: meta-kaggle dataset search, discussion analysis, and notebook analysis",
       "source": "./kaggle-helper",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/kaggle-helper"
     },
