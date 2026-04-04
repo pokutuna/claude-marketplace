@@ -88,6 +88,6 @@ DuckDB では `strptime(col, '%m/%d/%Y %H:%M:%S')` でパースして比較す�
 
 ## Known Limitations
 
-- **Competitions.ForumId が NULL**: 約半数のコンペで NULL。extract.py は Forums.Title から slug/タイトルマッチでフォールバック検索するが、見つからない場合がある
-- **データは完全ダンプではない**: Kaggle 公式が明記。一部の行・列がフィルタされている
+- **開催中のコンペの Discussion データは含まれない**: Kaggle 公式が明記 — "We're not making data from competitions available unless that competition has ended and the leaderboard has been finalized." 開催中のコンペは Competitions.csv にレコードがあっても ForumId が NULL、Forums/ForumTopics にもデータなし
+- **データは完全ダンプではない**: 一部の行・列がフィルタされている (公式記載)
 - **ハッシュ値は提供されない**: Kaggle API はファイルの `name`, `size`, `creationDate` のみ返す。サイズ比較で差分判定している

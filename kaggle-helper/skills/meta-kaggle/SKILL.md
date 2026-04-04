@@ -1,12 +1,11 @@
 ---
 name: meta-kaggle
 description: |
-  kaggle/meta-kaggle データセットをローカルにダウンロードし、コンペ別にフィルタしたサブセットを作成、DuckDB で検索・分析する。
-  Use when: "meta-kaggle", "ディスカッション検索", "上位解法", "discussion 分析"
-  Do NOT use for: 個別の discussion を読む (-> /kaggle-discussion), notebook 分析 (-> /kaggle-notebook)
+  終了済みコンペの discussion・チーム情報を meta-kaggle から検索・分析する。終了前のコンペのデータは含まれない。
+  Use when: "meta-kaggle", "上位解法", "過去コンペ discussion"
 metadata:
   author: pokutuna
-  version: 0.3.0
+  version: 0.3.1
 allowed-tools:
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/sync.py *)"
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py *)"
@@ -53,15 +52,20 @@ uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/sync.py --force
 コンペの slug を指定してフォーラムデータを Parquet に抽出する。
 
 ```bash
-# サブセット作成
+# サブセット作成 (コンペの Discussion タブのみ、デフォルト)
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py <competition-slug>
 
-# 再作成 (データ更新後)
+# データセット・モデルのフォーラムも含める
+uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py <competition-slug> --include-datasets --include-models
+
+# 再作成 (データ更新後、オプション変更時)
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py <competition-slug> --update
 
 # 作成済み一覧
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py --list
 ```
+
+デフォルトではコンペの Discussion タブ (ParentForumId: 5, 8, 52) のみ抽出する。関連データセットやモデルのフォーラムも含めたい場合は `--include-datasets` / `--include-models` を指定する。
 
 成功すると `~/.meta-kaggle/<slug>/` に teams.parquet, topics.parquet, messages.parquet, meta.json が作成される。
 
@@ -169,33 +173,33 @@ uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/query.py <slug>
 
 ### Error: "not_extracted"
 
-**原因:** 指定した slug のサブセットが未作成。
-**対処:** `extract.py <slug>` を実行する。初回は `sync.py` でソースデータのダウンロードも必要。
+原因: 指定した slug のサブセットが未作成。
+対処: `extract.py <slug>` を実行する。初回は `sync.py` でソースデータのダウンロードも必要。
 
 ### Error: "data_missing"
 
-**原因:** ソース CSV がダウンロードされていない。
-**対処:** `sync.py` を実行してデータを同期する。
+原因: ソース CSV がダウンロードされていない。
+対処: `sync.py` を実行してデータを同期する。
 
 ### Error: "no_forum" / ForumId が NULL
 
-**原因:** 約半数のコンペで Competitions.ForumId が NULL。extract.py は Forums.Title からフォールバック検索するが、見つからない場合がある。
-**対処:** `candidates` が返された場合はユーザに選択を促す。見つからない場合はそのコンペのフォーラムデータは取得不可。
+原因: 開催中のコンペの Discussion データは meta-kaggle に含まれない (Kaggle 公式仕様)。リーダーボードが確定した終了済みコンペのみ対象。
+対処: 開催中のコンペの Discussion を調べるには Kaggle Web やブラウザから直接取得する。
 
 ### Error: "ambiguous_slug"
 
-**原因:** 部分一致で複数のコンペがヒットした。
-**対処:** 返された `candidates` から正しい slug を特定して再実行する。
+原因: 部分一致で複数のコンペがヒットした。
+対処: 返された `candidates` から正しい slug を特定して再実行する。
 
 ### データが古い / 最新の Discussion が含まれない
 
-**原因:** meta-kaggle は毎日 UTC 12時頃に更新される (データ鮮度は UTC 7-8時頃まで)。
-**対処:**
+原因: meta-kaggle は毎日 UTC 12時頃に更新される (データ鮮度は UTC 7-8時頃まで)。
+対処:
 1. `sync.py --status` で `lastUpdated` を確認
 2. `sync.py` で最新データに同期
 3. `extract.py <slug> --update` でサブセットを再作成
 
 ### topics コマンドで低品質トピックが多い
 
-**原因:** デフォルトでは Score <= 0 かつ TotalMessages <= 1 のトピックを除外している。
-**対処:** `--all` で全トピック表示、`--min-score N` や `--min-messages N` で閾値を指定。
+原因: デフォルトでは Score <= 0 かつ TotalMessages <= 1 のトピックを除外している。
+対処: `--all` で全トピック表示、`--min-score N` や `--min-messages N` で閾値を指定。
