@@ -1,0 +1,16 @@
+{
+  "description": "Play a scale-based notification sound on task completion",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/play-notification.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -85,6 +85,12 @@
       "description": "Ask GitHub Copilot CLI to review code, design, or approach — get a second AI opinion",
       "source": "./copilot-cli",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/copilot-cli"
+    },
+    {
+      "name": "octave-notification",
+      "description": "Play musical scale notification sounds based on tmux window index",
+      "source": "./octave-notification",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/octave-notification"
     }
   ]
 }
