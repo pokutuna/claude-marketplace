@@ -48,3 +48,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [things-app](./things-app/) | Read and update tasks in Things 3 via JXA |
 | [toggle-plugin](./toggle-plugin/) | Toggle plugins enabled/disabled per project |
 | [queue](./queue/) | Task queue — queue prompts with :qu, auto-feed on task completion |
+| [copilot-cli](./copilot-cli/) | Ask GitHub Copilot CLI to review code — second AI opinion |

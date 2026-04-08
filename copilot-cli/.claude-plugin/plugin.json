@@ -1,0 +1,10 @@
+{
+  "name": "copilot-cli",
+  "version": "0.1.0",
+  "description": "Ask GitHub Copilot CLI to review code, design, or approach — get a second AI opinion",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": ["copilot", "review", "code-review", "github", "second-opinion"],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/copilot-cli"
+}
