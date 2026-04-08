@@ -157,27 +157,38 @@ assert_blocked_with() {
   assert_blocked_with "Queue is empty."
 }
 
-# --- :qu auto ---
+# --- :qu run / :qu stop ---
 
-@test ":qu auto enables auto-dequeue" {
-  run prompt ":qu auto"
+@test ":qu run with items dequeues immediately" {
+  enqueue "first task" "second task"
+  run prompt ":qu run"
   [ "$status" -eq 0 ]
-  assert_blocked_with "Auto-dequeue enabled"
+  [[ "$output" == *"Running queue"* ]]
+  [[ "$output" == *"first task"* ]]
+  # auto flag should be set
   local val
   val=$(git config -f "$CONFIG_FILE" --get "session.${CLAUDE_SESSION_ID}.auto")
   [ "$val" = "true" ]
 }
 
-@test ":qu auto off disables auto-dequeue" {
-  prompt ":qu auto" >/dev/null 2>&1
-  run prompt ":qu auto off"
+@test ":qu run with empty queue blocks" {
+  run prompt ":qu run"
   [ "$status" -eq 0 ]
-  assert_blocked_with "Auto-dequeue disabled"
+  assert_blocked_with "queue is empty"
+}
+
+@test ":qu stop disables auto-dequeue" {
+  prompt ":qu run" >/dev/null 2>&1 || true
+  enqueue "task"
+  prompt ":qu run" >/dev/null 2>&1
+  run prompt ":qu stop"
+  [ "$status" -eq 0 ]
+  assert_blocked_with "Queue run stopped"
 }
 
 @test ":qu list shows auto status" {
   enqueue "task"
-  prompt ":qu auto" >/dev/null 2>&1
+  git config -f "$CONFIG_FILE" "session.${CLAUDE_SESSION_ID}.auto" "true"
   run prompt ":qu list"
   [[ "$output" == *"auto"* ]]
 }
@@ -200,7 +211,7 @@ assert_blocked_with() {
   git config -f "$CONFIG_FILE" "session.${CLAUDE_SESSION_ID}.auto" "true"
   local stdout
   stdout=$(stop 2>/dev/null)
-  echo "$stdout" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
+  echo "$stdout" | jq -e '.decision == "block"' >/dev/null
   [[ "$stdout" == *"auto task"* ]]
   [[ "$stdout" == *"1 remaining"* ]]
 }

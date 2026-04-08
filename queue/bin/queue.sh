@@ -150,8 +150,8 @@ Commands:
   :qu del N      Delete Nth item
   :qu clear      Clear the queue
   :qu next       Dequeue and execute the next item
-  :qu auto       Enable auto-dequeue on task completion
-  :qu auto off   Disable auto-dequeue (default)
+  :qu run        Start running the queue (auto-dequeue on task completion)
+  :qu stop       Stop running the queue
   :qu help       Show this help"
 }
 
@@ -203,13 +203,28 @@ on_prompt() {
           block_with_message "Queue is empty."
         fi
         ;;
-      auto)
+      run)
         set_auto true
-        block_with_message "Auto-dequeue enabled. Tasks will run on Stop."
+        # If queue has items, immediately dequeue and execute
+        local next
+        if next=$(queue_pop); then
+          read_items
+          jq -n --arg msg "$next" --argjson r "$ITEM_COUNT" \
+            --arg sm "Running queue ($ITEM_COUNT remaining): $(truncate_line "$next")" '{
+            "systemMessage": $sm,
+            "hookSpecificOutput": {
+              "hookEventName": "UserPromptSubmit",
+              "additionalContext": ("The user typed \":qu run\" which is a queue command, not an instruction. Ignore the prompt text. Instead, execute the following dequeued task (" + ($r | tostring) + " remaining in queue):\n\n" + $msg)
+            }
+          }'
+          exit 0
+        else
+          block_with_message "Queue run enabled, but queue is empty. Add tasks with :qu MESSAGE."
+        fi
         ;;
-      auto\ off)
+      stop)
         set_auto false
-        block_with_message "Auto-dequeue disabled. Use :qu next to dequeue."
+        block_with_message "Queue run stopped."
         ;;
       help)
         show_help
@@ -249,16 +264,14 @@ on_stop() {
     exit 0
   fi
 
-  # Auto mode: pop and inject
+  # Auto mode: pop and block stop to continue with next task
   local next
   if next=$(queue_pop); then
     read_items
-    echo "claude-queue: auto-dequeuing ($ITEM_COUNT remaining)" >&2
     jq -n --arg msg "$next" --argjson r "$ITEM_COUNT" '{
-      "hookSpecificOutput": {
-        "hookEventName": "Stop",
-        "additionalContext": ("The user queued this task earlier via claude-queue (" + ($r | tostring) + " remaining). Execute it now:\n\n" + $msg)
-      }
+      "decision": "block",
+      "reason": ("The user queued this task earlier via claude-queue (" + ($r | tostring) + " remaining). Execute it now:\n\n" + $msg),
+      "systemMessage": ("auto-dequeuing (" + ($r | tostring) + " remaining)")
     }'
   fi
   exit 0
