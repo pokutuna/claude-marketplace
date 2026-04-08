@@ -1,8 +1,9 @@
 ---
-name: review-copilot-cli
+name: ask-copilot
 description: >-
   Ask GitHub Copilot CLI to review code, design, or approach. Provides a second AI opinion.
-  Use when: "copilot review", "review-copilot-cli", "copilot にレビュー", "second opinion", "セカンドオピニオン"
+  Use when: "ask-copilot", "copilot review", "copilot にレビュー", "copilot に聞いて",
+  "second opinion", "セカンドオピニオン", "壁打ち", "rubber duck"
 metadata:
   author: pokutuna
   version: 0.1.0
@@ -86,9 +87,9 @@ Copilot の出力を表示する際、冒頭に Copilot CLI による結果で�
 ## Examples
 
 ```
-/review-copilot-cli                                    # 会話の文脈からレビュー対象を判断
-/review-copilot-cli staged -y                          # staged changes を確認スキップでレビュー
-/review-copilot-cli この設計方針についてレビューして     # 方針レビュー
-/review-copilot-cli src/auth.ts --model o3             # 特定ファイルをモデル指定でレビュー
-/review-copilot-cli pr エラーハンドリングに注目         # PR 全変更をフォーカス指定でレビュー
+/ask-copilot                                    # 会話の文脈からレビュー対象を判断
+/ask-copilot staged -y                          # staged changes を確認スキップでレビュー
+/ask-copilot この設計方針についてレビューして     # 方針レビュー
+/ask-copilot src/auth.ts --model o3             # 特定ファイルをモデル指定でレビュー
+/ask-copilot pr エラーハンドリングに注目         # PR 全変更をフォーカス指定でレビュー
 ```

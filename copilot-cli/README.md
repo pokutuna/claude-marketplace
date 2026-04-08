@@ -16,10 +16,10 @@ Claude が会話コンテキストや引数からレビュープロンプトを�
 ## Usage
 
 ```
-/review-copilot-cli                                    # 会話の文脈からレビュー対象を判断
-/review-copilot-cli staged -y                          # staged changes を確認スキップでレビュー
-/review-copilot-cli この設計方針についてレビューして     # 方針レビュー
-/review-copilot-cli src/auth.ts --model o3             # 特定ファイルをモデル指定でレビュー
+/ask-copilot                                    # 会話の文脈からレビュー対象を判断
+/ask-copilot staged -y                          # staged changes を確認スキップでレビュー
+/ask-copilot この設計方針についてレビューして     # 方針レビュー
+/ask-copilot src/auth.ts --model o3             # 特定ファイルをモデル指定でレビュー
 ```
 
 ## Options
