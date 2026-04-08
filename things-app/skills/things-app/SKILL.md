@@ -1,24 +1,24 @@
 ---
 name: things-app
 description: |
-  Read and update tasks in Things 3 app via JXA.
+  Read and update tasks in Things 3 app.
   Use when user mentions "things", "today tasks", "inbox", "todo", "タスク",
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.6.0
+  version: 0.7.0
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
 
 # Things 3
 
-Read and update tasks in Things 3 via JXA (JavaScript for Automation).
+Read and update tasks in Things 3.
 Requires macOS with Things 3 installed.
 
 ## Script
 
-All commands use a single script. Run without arguments to see usage:
+All commands use a single executable script. It has a shebang so **always execute it directly** — never prefix with `osascript` or `node`:
 
 ```
 ${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js

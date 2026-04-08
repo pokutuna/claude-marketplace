@@ -1,7 +1,7 @@
 {
   "name": "things-app",
-  "version": "0.6.0",
-  "description": "Read and update tasks in Things 3 via AppleScript/JXA",
+  "version": "0.7.0",
+  "description": "Read and update tasks in Things 3",
   "author": {
     "name": "pokutuna"
   },

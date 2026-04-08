@@ -404,17 +404,28 @@ function cmdCreate(title, opts) {
     );
   }
 
-  let container = app.lists[LIST_INBOX];
-  if (opts.project) container = app.projects[opts.project];
-  else if (opts.area) container = app.areas[opts.area];
-
   const t = app.make({
     new: "toDo",
     withProperties: props,
-    at: container,
+    at: app.lists[LIST_INBOX],
   });
 
-  if (opts.when) {
+  // Move to project/area after creation (creating directly in area causes Someday)
+  if (opts.project) {
+    thingsAS(
+      "move " +
+        todoRef(t.id()) +
+        ' to project "' +
+        escapeAS(opts.project) +
+        '"',
+    );
+  } else if (opts.area) {
+    thingsAS(
+      "move " + todoRef(t.id()) + ' to area "' + escapeAS(opts.area) + '"',
+    );
+  }
+
+  if (opts.when && /^\d{4}-\d{2}-\d{2}$/.test(opts.when)) {
     var wp = opts.when.split("-");
     app.schedule(t, {
       for: new Date(
@@ -446,7 +457,7 @@ function cmdUpdate(taskId, opts) {
     t.notes = opts.notes;
     changes.push("notes");
   }
-  if (opts.when !== undefined) {
+  if (opts.when !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(opts.when)) {
     var wp = opts.when.split("-");
     app.schedule(t, {
       for: new Date(
