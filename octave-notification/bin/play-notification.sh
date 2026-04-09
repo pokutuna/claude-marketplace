@@ -9,8 +9,8 @@ SOUNDS_DIR="$(cd "$(dirname "$0")/../sounds" && pwd)"
 MAX_INDEX=20
 
 # Determine tmux window index
-if command -v tmux &>/dev/null && [ -n "${TMUX:-}" ]; then
-    INDEX=$(tmux display-message -p '#{window_index}')
+if command -v tmux &>/dev/null && [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ]; then
+    INDEX=$(tmux display-message -t "$TMUX_PANE" -p '#{window_index}')
 else
     INDEX=0
 fi
