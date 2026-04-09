@@ -1,7 +1,7 @@
 {
   "name": "copilot-cli",
-  "version": "0.1.0",
-  "description": "Ask GitHub Copilot CLI to review code, design, or approach — get a second AI opinion",
+  "version": "0.2.0",
+  "description": "Ask GitHub Copilot CLI for a second AI opinion",
   "author": {
     "name": "pokutuna"
   },
