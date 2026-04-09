@@ -81,10 +81,10 @@
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/queue"
     },
     {
-      "name": "copilot-cli",
-      "description": "Ask GitHub Copilot CLI to review code, design, or approach — get a second AI opinion",
-      "source": "./copilot-cli",
-      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/copilot-cli"
+      "name": "github-copilot",
+      "description": "GitHub Copilot CLI integration — second AI opinion and PR review requests",
+      "source": "./github-copilot",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/github-copilot"
     },
     {
       "name": "octave-notification",
