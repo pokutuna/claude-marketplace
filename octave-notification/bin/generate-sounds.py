@@ -4,8 +4,9 @@
 # ///
 """Generate bell-like notification WAV files.
 
-Do-Re-Mi-Fa-So-La-Ti (7 notes) x 3 octaves = 21 files.
-Each file corresponds to a tmux window index (0-20).
+Index 0 = B3 (one note below C4), then index 1-21 = C4 through B6.
+Do-Re-Mi-Fa-So-La-Ti (7 notes) x 3 octaves + 1 leading note = 22 files.
+Each file corresponds to a tmux window index (0-21).
 Uses only Python standard library (wave, struct, math).
 """
 
@@ -64,7 +65,22 @@ def main():
     os.makedirs(sounds_dir, exist_ok=True)
 
     index = 0
-    for octave in range(3):  # 3 octaves: C4-B4, C5-B5, C6-B6
+
+    # Index 0: B3 (one note below C4)
+    b3_semitones = -1  # B3 is 1 semitone below C4
+    b3_freq = BASE_FREQ * (2 ** (b3_semitones / 12.0))
+    filename = os.path.join(sounds_dir, f"bell_{index}.wav")
+    data = generate_bell_tone(b3_freq)
+    with wave.open(filename, "w") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(data)
+    print(f"bell_{index:>2}.wav  B3   {b3_freq:7.2f} Hz")
+    index += 1
+
+    # Index 1-21: C4-B6 (3 octaves)
+    for octave in range(3):
         for note_idx, semitone in enumerate(MAJOR_SCALE):
             total_semitones = octave * 12 + semitone
             freq = BASE_FREQ * (2 ** (total_semitones / 12.0))

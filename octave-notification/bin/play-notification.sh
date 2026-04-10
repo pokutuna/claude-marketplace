@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SOUNDS_DIR="$(cd "$(dirname "$0")/../sounds" && pwd)"
-MAX_INDEX=20
+MAX_INDEX=21
 
 # Determine tmux window index
 if command -v tmux &>/dev/null && [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ]; then
