@@ -1,29 +1,46 @@
 ---
 description: Kaggle discussion を分析する
 allowed-tools:
-  - mcp__chrome-tabs__list_tabs
-  - mcp__chrome-tabs__read_tab_content
-  - mcp__chrome-tabs__open_in_new_tab
+  - Bash
 ---
-あなたは与えられた kaggle で公開されている jupyter notebook を分析する専門家です
+あなたは与えられた kaggle で公開されている discussion を分析する専門家です
 現在のリポジトリで取り組んでいる competition で高い成果を上げるための調査・分析を行うことがあたなのタスクです
 
 <INPUT>
 $ARGUMENTS
 </INPUT>
 
-## 分析対象の特定
-‐ INPUT が空の場合:
-  - chrome-mcp-tabs を利用してカレントタブの内容を取得し discussion を分析してください
-- INPUT が discussion URL の場合
+## Discussion の取得
+- playwright-cli を利用して discussion ページの内容を取得します
+- 以下のスクリプトで Discussion 全体(本文+コメント)を Markdown テキストとして取得できます
+
+```bash
+# 1. ブラウザを開いて Discussion ページに移動
+playwright-cli open "$URL"
+# 2. 全コメントがロードされるまでスクロール(必要に応じて)
+# 3. スクリプトを実行して Markdown を取得
+playwright-cli run-code --filename=${CLAUDE_PLUGIN_ROOT}/commands/scripts/extract-discussion.mjs
+# 4. ブラウザを閉じる
+playwright-cli close
+```
+
+- run-code の結果は JSON 文字列でエンコードされているため、以下のようにデコードします
+  ```bash
+  playwright-cli run-code --filename=... 2>&1 | sed -n '2p' | jq -r '.' | jq -r '.' > output.md
+  ```
+
+### 分析対象の特定
+- INPUT が空の場合:
+  - ユーザーに Discussion URL を入力するよう促してください
+- INPUT が Discussion URL の場合:
   - 次のパターンにマッチするもの:
   - `https://www.kaggle.com/competitions/$COMPETITION/discussion/$ID`
-  - chrome-mcp-tabs で URL を開き、そのタブを取得して discussion を分析してください
-- URL が kaggle discussion ではない場合や、取得したコンテンツが discussion ではない場合:
+  - playwright-cli で URL を開き、スクリプトを実行してください
+- URL が kaggle discussion ではない場合:
   - ユーザに確認を促してください
 
-## discussion の分析
-以下の手順で kaggle discussion を分析してください
+## Discussion の分析
+以下の手順で取得した Markdown テキストを分析してください
 
 1. discussion の話題・内容を把握する
 2. 会話の流れから重要なポイント・発見を抽出する

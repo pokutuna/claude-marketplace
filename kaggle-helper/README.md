@@ -18,7 +18,7 @@ Kaggle のコンペティションリサーチを支援する Claude Code プラ
 ## Prerequisites
 
 - kaggle CLI (`pip install kaggle`) - 認証済み
-- chrome-tabs MCP server - ブラウザからコンテンツを取得するために必要
+- playwright-cli - Discussion ページの取得に使用
 - uv - Python スクリプト実行 (meta-kaggle skill)
 
 ## Installation
