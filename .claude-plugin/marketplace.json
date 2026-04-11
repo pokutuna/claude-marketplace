@@ -91,6 +91,12 @@
       "description": "Play musical scale notification sounds based on tmux window index",
       "source": "./octave-notification",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/octave-notification"
+    },
+    {
+      "name": "zoom",
+      "description": "Extract transcripts from Zoom recording share pages via Playwright",
+      "source": "./zoom",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/zoom"
     }
   ]
 }

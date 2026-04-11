@@ -50,3 +50,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [queue](./queue/) | Task queue — queue prompts with :qu, auto-feed on task completion |
 | [github-copilot](./github-copilot/) | GitHub Copilot CLI integration — second AI opinion and PR review requests |
 | [octave-notification](./octave-notification/) | Musical scale notification sounds per tmux window (3 octaves, 21 notes) |
+| [zoom](./zoom/) | Extract transcripts from Zoom recording share pages via Playwright |
