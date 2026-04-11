@@ -413,7 +413,7 @@ function cmdCreate(title, opts) {
   // Move to project/area after creation (creating directly in area causes Someday)
   if (opts.project) {
     thingsAS(
-      "move " +
+      "set project of " +
         todoRef(t.id()) +
         ' to project "' +
         escapeAS(opts.project) +
@@ -515,7 +515,7 @@ function cmdUpdate(taskId, opts) {
   }
   if (opts.project !== undefined) {
     thingsAS(
-      "move " +
+      "set project of " +
         todoRef(taskId) +
         ' to project "' +
         escapeAS(opts.project) +

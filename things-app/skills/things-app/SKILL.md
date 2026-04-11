@@ -6,7 +6,7 @@ description: |
   "what's on my plate", "things project", "things area", "今日のタスク".
 metadata:
   author: pokutuna
-  version: 0.7.0
+  version: 0.7.1
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---
