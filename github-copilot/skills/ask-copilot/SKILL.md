@@ -5,7 +5,7 @@ description: >-
   Use when: "ask-copilot", "copilot", "second opinion", "壁打ち"
 metadata:
   author: pokutuna
-  version: 0.2.0
+  version: 0.3.0
   compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)
@@ -21,10 +21,13 @@ GitHub Copilot CLI に質問や依頼を投げ、独立した AI の意見を得
 ```bash
 copilot --model gpt-5.4 --effort medium \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
+  --allow-all-paths \
   --output-format text --no-color --no-ask-user \
   --share=/tmp/copilot-review-latest.md \
   -p "<prompt>"
 ```
+
+書き込みは `--deny-tool='write'` で禁止したまま、`--allow-all-paths` でファイル読み取りの範囲を CWD 外にも広げる。特定ディレクトリだけ追加したい場合は `--allow-all-paths` の代わりに `--add-dir <path>` を複数指定する。
 
 <ARGUMENTS>
 $ARGUMENTS
@@ -65,6 +68,7 @@ Copilot が自律的にファイルを読んだり git コマンドを実行で�
 ```bash
 copilot --model <model> --effort <effort> \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
+  --allow-all-paths \
   --output-format text --no-color --no-ask-user \
   --share=/tmp/copilot-review-latest.md \
   -p "$(cat <<'PROMPT'
