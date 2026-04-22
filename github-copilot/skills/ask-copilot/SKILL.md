@@ -5,7 +5,7 @@ description: >-
   Use when: "ask-copilot", "copilot", "second opinion", "壁打ち"
 metadata:
   author: pokutuna
-  version: 0.3.0
+  version: 0.3.1
   compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)
@@ -59,9 +59,23 @@ Copilot が自律的にファイルを読んだり git コマンドを実行で�
 - `-y`/`--yes` が指定されている
 - $ARGUMENTS でレビュー対象と観点が明確に指定されている (例: `staged`, `src/auth.ts`, `pr エラーハンドリングに注目`)
 
-**上記に該当しない場合は必ず AskUserQuestion でユーザーに確認すること。**
+**上記に該当しない場合は必ず AskUserQuestion ツールでユーザーに確認すること。**
+テキストで「〜で進めていいですか？」と聞くのは禁止。必ず AskUserQuestion を呼び出す。
 特に $ARGUMENTS が空や曖昧な場合、確認なしに copilot を実行してはならない。
-確認時は構築したプロンプトの要約・モデル・effort を表示する。
+
+AskUserQuestion の使い方:
+
+**ケース A — プロンプトを構築できる場合 (対象と観点が推定できる)**
+- 質問文には構築したプロンプトの要約 (対象・背景・聞きたいこと) を短くまとめて含める
+- 選択肢: 「このまま実行」「プロンプトを修正」「中止」
+
+**ケース B — プロンプトを構築できない場合 ($ARGUMENTS 空かつ会話文脈から対象/観点が読み取れない)**
+- まず「何を聞きたいか」を引き出す AskUserQuestion を先に呼ぶ (対象のファイル/PR/staged/設計相談などの選択肢、または自由記述)
+- 回答を受け取ってからプロンプトを構築し、改めてケース A の確認 AskUserQuestion を呼ぶ (二段階)
+
+共通ルール:
+- プロンプトの詳細な要旨や内容は、AskUserQuestion の `question` や選択肢の `description` に入れる。ツール外のテキストに長文の要約を出力しない
+- モデル・effort は **質問文・選択肢のラベル・description のいずれにも一切含めない** (「モデル」「effort」「gpt-5.4」「medium」などの語も登場させない)。デフォルトの gpt-5.4 / medium を使い、$ARGUMENTS で明示指定された場合のみ従う
 
 ### 3. Run Copilot
 

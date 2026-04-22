@@ -1,6 +1,6 @@
 {
   "name": "github-copilot",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "GitHub Copilot CLI integration — second AI opinion and PR review requests",
   "author": {
     "name": "pokutuna"
