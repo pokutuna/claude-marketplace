@@ -5,10 +5,11 @@ description: >-
   Use when: "ask-copilot", "copilot", "second opinion", "壁打ち"
 metadata:
   author: pokutuna
-  version: 0.3.1
+  version: 0.4.2
   compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)
+  - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh)
   - Read
   - AskUserQuestion
 ---
@@ -18,16 +19,24 @@ allowed-tools:
 GitHub Copilot CLI に質問や依頼を投げ、独立した AI の意見を得る。
 コードレビュー、設計相談、調査、質問など用途を問わない。
 
+このセッションの `--share` 保存先 (skill 起動時に確定):
+
+SHARE_FILE = !`bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh`
+
+以降の手順では上記パスを `--share` に指定し、ユーザーへの案内にも使う。
+
 ```bash
 copilot --model gpt-5.4 --effort medium \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
   --allow-all-paths \
   --output-format text --no-color --no-ask-user \
-  --share=/tmp/copilot-review-latest.md \
+  --share="<上記 SHARE_FILE>" \
   -p "<prompt>"
 ```
 
 書き込みは `--deny-tool='write'` で禁止したまま、`--allow-all-paths` でファイル読み取りの範囲を CWD 外にも広げる。特定ディレクトリだけ追加したい場合は `--allow-all-paths` の代わりに `--add-dir <path>` を複数指定する。
+
+`--share` の保存先は `$TMPDIR` (macOS では `/var/folders/.../T/`、未設定なら `/tmp`) 配下にタイムスタンプ付きファイル名で生成する。OS のクリーンアップ (macOS は 3 日アクセスなしで削除) までは残るため、後から参照可能。
 
 <ARGUMENTS>
 $ARGUMENTS
@@ -79,12 +88,14 @@ AskUserQuestion の使い方:
 
 ### 3. Run Copilot
 
+冒頭で確定した `SHARE_FILE` のパスをそのまま `--share` に文字列で指定する (Bash 呼び出しの中で `$TMPDIR` を再展開しない)。
+
 ```bash
 copilot --model <model> --effort <effort> \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
   --allow-all-paths \
   --output-format text --no-color --no-ask-user \
-  --share=/tmp/copilot-review-latest.md \
+  --share="<冒頭で確定した SHARE_FILE>" \
   -p "$(cat <<'PROMPT'
 あなたは読み取り専用モードで動作しています。ファイルの読み取り、コード検索、シェルコマンドの実行は可能ですが、ファイルの編集や作成はできません。調査結果の報告のみ行ってください。
 
@@ -93,17 +104,17 @@ PROMPT
 )"
 ```
 
-`--share` により完了時にセッション全体が `/tmp/copilot-review-latest.md` に markdown で保存される。
+`--share` により完了時にセッション全体が SHARE_FILE に markdown で保存される。後で参照できるよう、生成したパスを必ずユーザーに伝える。
 
 Bash ツールの timeout を 300000ms (5分) に設定すること。timeout しても copilot プロセスはバックグラウンドで継続し、完了時にファイルへ書き出される。
 
 ### 4. Present results
 
-Bash の timeout 内に完了した場合: 出力をそのまま表示する。
+Bash の timeout 内に完了した場合: 出力をそのまま表示し、末尾に保存先パス (SHARE_FILE の値) を明示する。
 
 timeout した場合: copilot プロセスを kill してはならない。AskUserQuestion で「Copilot がまだ実行中です。待ちますか?」と確認する。
-待つ場合は `/tmp/copilot-review-latest.md` を定期的に Read で読んで完了を待つ。
-待たない場合は、後で `/tmp/copilot-review-latest.md` を読めることを伝える。
+待つ場合は SHARE_FILE を定期的に Read で読んで完了を待つ。
+待たない場合は、後で SHARE_FILE を読めることをパスとともに伝える。
 
 Copilot の出力を表示する際、冒頭に Copilot CLI による結果である旨を注記。
 
