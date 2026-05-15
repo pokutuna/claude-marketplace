@@ -1,9 +1,9 @@
 ---
 name: pushover-notify
-description: Toggle Pushover push notifications for Claude Code idle/permission prompts. Use when user mentions "pushover", "通知 on/off", "離席通知", "toggle pushover".
+description: Toggle Pushover push notifications for Claude Code idle/permission prompts. Use when user mentions "pushover", "toggle pushover", "enable/disable notification".
 metadata:
   author: pokutuna
-  version: 0.1.0
+  version: 0.1.1
 allowed-tools:
   - "Bash(${CLAUDE_PLUGIN_ROOT}/bin/notify.sh *)"
 ---
@@ -12,7 +12,6 @@ Run `${CLAUDE_PLUGIN_ROOT}/bin/notify.sh <subcommand>` and report the output to 
 
 Subcommand mapping:
 
-- "on" / "enable" / "有効" -> `enable`
-- "off" / "disable" / "無効" -> `disable`
-- "toggle" / empty -> `toggle`
-- "status" / "状態" -> `status`
+- "on" -> `enable`
+- "off" -> `disable`
+- empty / "toggle" -> `toggle`
