@@ -97,6 +97,12 @@
       "description": "Extract transcripts from Zoom recording share pages via Playwright",
       "source": "./zoom",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/zoom"
+    },
+    {
+      "name": "pushover-notify",
+      "description": "Send Pushover push notifications when Claude Code needs your attention (idle/permission). Skips when display is on (macOS).",
+      "source": "./pushover-notify",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/pushover-notify"
     }
   ]
 }

@@ -1,0 +1,15 @@
+{
+  "description": "Send Pushover notification when Claude Code needs user attention",
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/notify.sh send"
+          }
+        ]
+      }
+    ]
+  }
+}

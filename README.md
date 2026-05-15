@@ -51,3 +51,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [github-copilot](./github-copilot/) | GitHub Copilot CLI integration — second AI opinion and PR review requests |
 | [octave-notification](./octave-notification/) | Musical scale notification sounds per tmux window (3 octaves, 21 notes) |
 | [zoom](./zoom/) | Extract transcripts from Zoom recording share pages via Playwright |
+| [pushover-notify](./pushover-notify/) | Send Pushover push notifications when Claude needs attention (display-aware on macOS) |
