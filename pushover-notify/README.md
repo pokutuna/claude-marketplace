@@ -67,7 +67,7 @@ State is stored at `${XDG_STATE_HOME:-~/.local/state}/claude-pushover-notify.con
 
 ## Display detection
 
-On macOS, the script reads `pmset -g assertions` and skips notifications when the `"Prevent sleep while display is on"` assertion is held by `powerd` — i.e. the display is currently lit. When the display sleeps, the assertion is released and notifications go through.
+On macOS, the script reads `pmset -g assertions` and skips notifications while the system-wide `UserIsActive` assertion is set to `1` — i.e. input devices are in use and the display is lit. The assertion is released about 180 seconds after the last input event (around the time the display sleeps), at which point notifications go through.
 
 On non-macOS systems (or when `pmset` is unavailable), this check is skipped and notifications are always sent.
 

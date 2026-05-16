@@ -49,13 +49,18 @@ check_credentials() {
     [[ -n "${PUSHOVER_TOKEN:-}" && -n "${PUSHOVER_USER:-}" ]]
 }
 
-# Returns 0 (true) if display is on, 1 (false) if off or unknown.
+# Returns 0 (true) if the user is currently active (display on, input recently used),
+# 1 (false) if idle/display off or detection unavailable.
+# Reads the system-wide UserIsActive assertion from `pmset -g assertions`, which is
+# set to 1 by IOKit while input devices are in use and released ~180s after the last
+# input event (i.e. around the time the display sleeps).
 # When pmset is unavailable (non-macOS), returns 1 so notifications are sent.
 is_display_on() {
     command -v pmset >/dev/null 2>&1 || return 1
-    local assertions
-    assertions=$(pmset -g assertions 2>/dev/null) || return 1
-    [[ "$assertions" == *"Prevent sleep while display is on"* ]]
+    local value
+    value=$(pmset -g assertions 2>/dev/null \
+        | awk '/^Assertion status system-wide:/{f=1; next} /^Listed by owning process:/{f=0} f && $1=="UserIsActive"{print $2; exit}')
+    [[ "$value" == "1" ]]
 }
 
 cmd_enable() {

@@ -1,7 +1,7 @@
 {
   "name": "pushover-notify",
   "description": "Send Pushover notifications when Claude Code needs your attention (idle or permission prompt). Skips when display is on (macOS).",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "pokutuna"
   },
