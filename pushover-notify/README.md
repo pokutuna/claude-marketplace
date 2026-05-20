@@ -6,8 +6,9 @@ Send [Pushover](https://pushover.net/) push notifications when Claude Code needs
 
 - Fires on `Notification` events (idle prompts and permission requests)
 - **Display-aware (macOS)**: skips sending when the display is on, so you only get pinged when you're actually away
-- **Cross-session cooldown**: 60 seconds, prevents notification floods from multiple parallel sessions
-- **Disabled by default**: opt-in via `/toggle-pushover on`
+- **Context-rich body**: title shows the repository name (cwd basename); body includes the hook message plus a short excerpt of the last assistant turn so you can tell at a glance what finished
+- **Per-session quiet window**: 60 seconds. Repeats from the *same* session are delivered silently (`sound=none`, low priority) instead of being dropped; notifications from a *different* session always play a sound
+- **Disabled by default**: opt-in via the `pushover-notify` skill (`pushover on`)
 - Silent on failure: hook never disrupts Claude Code
 
 ## Installation
@@ -44,18 +45,19 @@ The plugin exposes a Skill triggered by phrases like:
 ## How it works
 
 ```mermaid
-flowchart LR
-    N[Notification event] --> H[notify.sh send]
-    H --> E{enabled?}
+flowchart TD
+    N[Notification event] --> E{enabled?}
     E -- no --> X[exit]
     E -- yes --> C{credentials set?}
     C -- no --> X
-    C -- yes --> D{display on?<br/>(macOS only)}
+    C -- yes --> D{display on?}
     D -- yes --> X
-    D -- no --> R{cooldown<br/>elapsed?}
-    R -- no --> X
-    R -- yes --> P[POST Pushover API]
+    D -- no --> S{same session within<br>quiet window?}
+    S -- yes --> Q[POST silent: sound=none priority=-1]
+    S -- no --> P[POST with default sound]
 ```
+
+The notification body is built from the hook's `message` field plus a short summary of the most recent assistant turn (last text block, or the last tool name if the turn was a tool call only). The title carries the repository name derived from `cwd`.
 
 State is stored at `${XDG_STATE_HOME:-~/.local/state}/claude-pushover-notify.conf` in git-config format:
 
@@ -63,6 +65,7 @@ State is stored at `${XDG_STATE_HOME:-~/.local/state}/claude-pushover-notify.con
 [global]
     enabled = true
     last-sent = 1730000000
+    last-session = 0a45e281-ad01-4040-84de-2c1caf1d3105
 ```
 
 ## Display detection
@@ -70,6 +73,16 @@ State is stored at `${XDG_STATE_HOME:-~/.local/state}/claude-pushover-notify.con
 On macOS, the script reads `pmset -g assertions` and skips notifications while the system-wide `UserIsActive` assertion is set to `1` — i.e. input devices are in use and the display is lit. The assertion is released about 180 seconds after the last input event (around the time the display sleeps), at which point notifications go through.
 
 On non-macOS systems (or when `pmset` is unavailable), this check is skipped and notifications are always sent.
+
+## Quiet window vs. cooldown
+
+Earlier versions dropped notifications during a 60-second cross-session cooldown. The current behavior keeps the 60-second window but never drops a notification — it only mutes the *sound* for repeats from the same session:
+
+| Scenario within 60s | Behavior |
+|---|---|
+| First notification (any session) | Sent with default sound |
+| Same session, repeated prompt | Sent silently (`sound=none`, `priority=-1`) — still appears in notification center |
+| Different session | Sent with default sound — you should hear new sessions |
 
 ## Environment variables
 
