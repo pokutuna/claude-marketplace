@@ -67,8 +67,9 @@ is_display_on() {
 }
 
 # Extract a short context summary from the transcript file.
-# For each assistant turn (scanned from newest first), prefer the trimmed text
-# content; fall back to "[ToolName]" if the turn was a tool call only.
+# For each assistant turn (scanned from newest first), combine the trimmed text
+# content with any tool_use names ("[ToolName]") in turn order so a short header
+# like "結果サマリ:" still carries the following tool call into the notification.
 # Returns the first non-empty result, truncated to 160 chars.
 transcript_summary() {
     local path="$1"
@@ -78,15 +79,14 @@ transcript_summary() {
     tac "$path" 2>/dev/null | jq -r '
         select(.type == "assistant")
         | .message.content // []
-        | (
-            ([.[] | select(.type == "text") | .text] | join(" "))
-            // ""
-          ) as $txt
-        | if ($txt | gsub("^[[:space:]]+|[[:space:]]+$"; "")) != "" then
-            $txt
-          else
-            ([.[] | select(.type == "tool_use") | "[" + .name + "]"] | join(" "))
-          end
+        | [
+            .[]
+            | if .type == "text" then (.text // "")
+              elif .type == "tool_use" then "[" + .name + "]"
+              else empty
+              end
+          ]
+        | join(" ")
     ' 2>/dev/null | awk '
         {
             gsub(/^[[:space:]]+|[[:space:]]+$/, "")
