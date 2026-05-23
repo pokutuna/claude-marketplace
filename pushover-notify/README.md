@@ -21,12 +21,17 @@ claude plugin install pushover-notify@pokutuna-plugins --scope user
 ## Setup
 
 1. Create a Pushover account and application: <https://pushover.net/>
-2. Set credentials in your shell:
+2. Set credentials in your shell rc file (`~/.zshrc`, `~/.bashrc`, etc.) so
+   they are inherited by the Claude Code process — the hook runs in a subshell
+   of whichever shell launched Claude Code:
 
    ```bash
    export PUSHOVER_TOKEN="your-app-token"
    export PUSHOVER_USER="your-user-key"
    ```
+
+   If you launch Claude Code from a GUI app (Spotlight, Raycast, launchctl),
+   the variables must be present in that launcher's environment as well.
 
 3. Enable notifications by asking Claude in natural language:
 
@@ -41,6 +46,18 @@ The plugin exposes a Skill triggered by phrases like:
 - `pushover on` / `pushover off` — enable / disable
 - `pushover toggle` — flip current state
 - `pushover status` — show state, credentials, display detection, last sent
+
+Example `pushover status` output:
+
+```
+Pushover notifications: true
+PUSHOVER_TOKEN: set
+PUSHOVER_USER: set
+jq: available
+Display: off (notifications sent)
+Last sent: 2026-05-23 14:32:10
+Last session: 0a45e281-ad01-4040-84de-2c1caf1d3105
+```
 
 ## How it works
 

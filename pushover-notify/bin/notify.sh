@@ -76,7 +76,9 @@ transcript_summary() {
     [[ -n "$path" && -r "$path" ]] || return 0
     command -v jq >/dev/null 2>&1 || return 0
 
-    tac "$path" 2>/dev/null | jq -r '
+    # tail -r reverses lines on BSD (macOS) and GNU coreutils; tac would
+    # require coreutils on macOS, so prefer tail -r for portability.
+    tail -r "$path" 2>/dev/null | jq -r '
         select(.type == "assistant")
         | .message.content // []
         | [
@@ -138,6 +140,12 @@ cmd_status() {
     echo "PUSHOVER_TOKEN: $token_status"
     echo "PUSHOVER_USER: $user_status"
 
+    if command -v jq >/dev/null 2>&1; then
+        echo "jq: available"
+    else
+        echo "jq: missing (notifications will be skipped)"
+    fi
+
     if command -v pmset >/dev/null 2>&1; then
         if is_display_on; then
             echo "Display: on (notifications skipped)"
@@ -164,6 +172,7 @@ cmd_status() {
 cmd_send() {
     [[ "$(get_enabled)" == "true" ]] || exit 0
     check_credentials || exit 0
+    command -v jq >/dev/null 2>&1 || exit 0
     ! is_display_on || exit 0
 
     local input
@@ -187,6 +196,7 @@ cmd_send() {
     else
         title="$hook_message"
     fi
+    title=$(printf '%s' "$title" | cut -c1-80)
 
     # Body: the last assistant activity excerpt, if we can extract one.
     # If not, fall back to the hook message so the notification is not empty
