@@ -25,7 +25,7 @@ CONFIG_FILE="$STATE_DIR/claude-pushover-notify.conf"
 # Within this window after the last send from the SAME session, the next
 # notification is delivered silently (sound=none) instead of being dropped.
 # Notifications from a DIFFERENT session always play a sound.
-QUIET_WINDOW_SEC=60
+QUIET_WINDOW_SEC=180
 
 ensure_state_dir() {
     mkdir -p "$STATE_DIR"

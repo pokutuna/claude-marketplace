@@ -7,7 +7,7 @@ Send [Pushover](https://pushover.net/) push notifications when Claude Code needs
 - Fires on `Notification` events (idle prompts and permission requests)
 - **Display-aware (macOS)**: skips sending when the display is on, so you only get pinged when you're actually away
 - **Context-rich body**: title shows the repository name (cwd basename); body includes the hook message plus a short excerpt of the last assistant turn so you can tell at a glance what finished
-- **Per-session quiet window**: 60 seconds. Repeats from the *same* session are delivered silently (`sound=none`, low priority) instead of being dropped; notifications from a *different* session always play a sound
+- **Per-session quiet window**: 180 seconds. Repeats from the *same* session are delivered silently (`sound=none`, low priority) instead of being dropped; notifications from a *different* session always play a sound
 - **Disabled by default**: opt-in via the `pushover-notify` skill (`pushover on`)
 - Silent on failure: hook never disrupts Claude Code
 
@@ -91,11 +91,11 @@ On macOS, the script reads `pmset -g assertions` and skips notifications while t
 
 On non-macOS systems (or when `pmset` is unavailable), this check is skipped and notifications are always sent.
 
-## Quiet window vs. cooldown
+## Quiet window
 
-Earlier versions dropped notifications during a 60-second cross-session cooldown. The current behavior keeps the 60-second window but never drops a notification — it only mutes the *sound* for repeats from the same session:
+A 180-second per-session window mutes the *sound* of repeat notifications from the same session. A notification is never dropped — it just arrives with `sound=none` and `priority=-1` so it shows up in the notification center without audio. Notifications from a different session always play a sound, so you hear new sessions:
 
-| Scenario within 60s | Behavior |
+| Scenario within 180s of last send | Behavior |
 |---|---|
 | First notification (any session) | Sent with default sound |
 | Same session, repeated prompt | Sent silently (`sound=none`, `priority=-1`) — still appears in notification center |
