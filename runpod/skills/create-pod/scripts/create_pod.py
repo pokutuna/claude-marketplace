@@ -146,21 +146,75 @@ def build_create_command(config: dict, env_dict: dict[str, str]) -> list[str]:
     return cmd
 
 
-def create_pod(cmd: list[str]) -> str | None:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    output = result.stdout + result.stderr
-    print(output.rstrip())
+# Substrings in runpodctl stderr that indicate the pod was NOT created and a retry
+# may succeed (typically stock exhaustion). Case-insensitive match.
+RETRYABLE_ERROR_PATTERNS = (
+    "no longer any instances available",
+    "no instances available",
+    "out of stock",
+    "out of capacity",
+    "no available gpus",
+)
 
+
+def parse_pod_id(stdout: str) -> str | None:
     try:
-        data = json.loads(result.stdout)
+        data = json.loads(stdout)
         pod_id = data.get("id") or data.get("pod", {}).get("id")
         if pod_id:
             return pod_id
     except json.JSONDecodeError:
         pass
 
-    match = re.search(r'pod "([a-z0-9]+)"', output)
+    match = re.search(r'pod "([a-z0-9]+)"', stdout)
     return match.group(1) if match else None
+
+
+def create_pod(
+    cmd: list[str], *, verbose: bool = True
+) -> tuple[str | None, str | None]:
+    """Run pod create. Returns (pod_id, retry_reason).
+
+    - pod_id present: success.
+    - retry_reason present: retryable failure (stock exhaustion), pod NOT created.
+    - both None: unknown failure, do not retry.
+    """
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    if verbose:
+        print(output.rstrip())
+
+    pod_id = parse_pod_id(result.stdout)
+    if pod_id:
+        return pod_id, None
+
+    haystack = output.lower()
+    for pattern in RETRYABLE_ERROR_PATTERNS:
+        if pattern in haystack:
+            return None, pattern
+
+    return None, None
+
+
+def find_existing_pod(name: str) -> str | None:
+    """Return the id of a RUNNING pod with the given name, or None."""
+    result = subprocess.run(
+        ["runpodctl", "pod", "list", "--name", name],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        pods = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(pods, list):
+        return None
+    for pod in pods:
+        if pod.get("desiredStatus") in ("RUNNING", "PROVISIONING"):
+            return pod.get("id")
+    return None
 
 
 def print_pod_summary(config: dict) -> None:
@@ -286,7 +340,36 @@ def main() -> None:
     parser.add_argument(
         "--dry-run", action="store_true", help="Print command without executing"
     )
+    parser.add_argument(
+        "--retry",
+        action="store_true",
+        help="Retry on stock-exhaustion errors until a pod is acquired",
+    )
+    parser.add_argument(
+        "--retry-interval",
+        type=int,
+        default=60,
+        help="Seconds between retries (default: 60, min: 30)",
+    )
+    parser.add_argument(
+        "--retry-max",
+        type=int,
+        default=20,
+        help="Max retry attempts (default: 20)",
+    )
+    parser.add_argument(
+        "--allow-duplicate",
+        action="store_true",
+        help="Create even if a pod with the same name is already running",
+    )
     args = parser.parse_args()
+
+    if args.retry_interval < 30:
+        print(
+            "Error: --retry-interval must be >= 30 seconds (rate limit safety)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if not shutil.which("runpodctl"):
         print(
@@ -314,11 +397,60 @@ def main() -> None:
         return
 
     print_pod_summary(config)
-    pod_id = create_pod(cmd)
 
-    if not pod_id:
-        print("Failed to create pod or parse pod ID.", file=sys.stderr)
-        sys.exit(1)
+    if not args.allow_duplicate:
+        existing = find_existing_pod(config["pod"]["name"])
+        if existing:
+            print(
+                f"Error: pod with name '{config['pod']['name']}' is already running (id: {existing})",
+                file=sys.stderr,
+            )
+            print(
+                f"  Connect: runpodctl ssh info {existing}\n"
+                f"  Or pass --allow-duplicate to create another",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    pod_id: str | None = None
+    attempt = 1
+    while True:
+        if attempt > 1:
+            print(f"\nAttempt {attempt}/{args.retry_max}...")
+        # Show full output only on the first attempt and the final attempt;
+        # quiet intermediate retries to keep the log readable.
+        verbose = attempt == 1 or attempt == args.retry_max or not args.retry
+        pod_id, retry_reason = create_pod(cmd, verbose=verbose)
+
+        if pod_id:
+            break
+
+        if not args.retry or not retry_reason or attempt >= args.retry_max:
+            if retry_reason and attempt >= args.retry_max:
+                print(
+                    f"Failed: retry limit reached ({args.retry_max} attempts), last reason: {retry_reason}",
+                    file=sys.stderr,
+                )
+            elif not retry_reason:
+                print("Failed to create pod or parse pod ID.", file=sys.stderr)
+            else:
+                print(
+                    f"Failed: {retry_reason} (pass --retry to keep trying)",
+                    file=sys.stderr,
+                )
+            sys.exit(1)
+
+        print(
+            f"  Stock unavailable ({retry_reason!r}), retrying in {args.retry_interval}s "
+            f"(attempt {attempt}/{args.retry_max})...",
+            file=sys.stderr,
+        )
+        try:
+            time.sleep(args.retry_interval)
+        except KeyboardInterrupt:
+            print("\nAborted by user.", file=sys.stderr)
+            sys.exit(130)
+        attempt += 1
 
     print()
     print(f"Pod created: {pod_id}")
