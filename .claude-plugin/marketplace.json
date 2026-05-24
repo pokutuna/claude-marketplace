@@ -103,6 +103,12 @@
       "description": "Send Pushover push notifications when Claude Code needs your attention (idle/permission). Skips when display is on (macOS).",
       "source": "./pushover-notify",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/pushover-notify"
+    },
+    {
+      "name": "difit",
+      "description": "Round-trip code review with difit. Loads AI-authored line comments at launch and exchanges replies with the human over difit's HTTP API while the server keeps running.",
+      "source": "./difit",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/difit"
     }
   ]
 }

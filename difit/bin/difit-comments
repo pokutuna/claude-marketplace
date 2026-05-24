@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# difit-comments — fetch comments from a running difit server and return only
+# the fields an AI consumer needs.
+#
+# Usage:
+#   difit-comments <port>
+#
+# Output: JSON array of threads, each with the minimum fields needed to reply:
+#   id, filePath, position, codeSnapshot (flattened to string), messages[{author, body}]
+# Dropped from upstream: version, createdAt/updatedAt at all levels, messages[].id.
+#
+# Errors and non-zero exits propagate from curl / jq.
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: difit-comments <port>" >&2
+  exit 2
+fi
+
+port="$1"
+
+curl -sf "http://localhost:${port}/api/comments-json" \
+  | jq '.threads | map({
+      id,
+      filePath,
+      position,
+      codeSnapshot: .codeSnapshot.content,
+      messages: [.messages[] | {author, body}]
+    })'

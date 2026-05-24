@@ -1,0 +1,14 @@
+{
+  "name": "difit",
+  "description": "Round-trip code review with difit between humans and AI. Loads AI-authored line comments at launch, then exchanges replies with the human over difit's HTTP API while the server keeps running.",
+  "version": "0.2.0",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/difit",
+  "keywords": [
+    "difit",
+    "code-review",
+    "diff"
+  ]
+}

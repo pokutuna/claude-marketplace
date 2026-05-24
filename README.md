@@ -52,3 +52,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [octave-notification](./octave-notification/) | Musical scale notification sounds per tmux window (3 octaves, 21 notes) |
 | [zoom](./zoom/) | Extract transcripts from Zoom recording share pages via Playwright |
 | [pushover-notify](./pushover-notify/) | Send Pushover push notifications when Claude needs attention (display-aware on macOS) |
+| [difit](./difit/) | Round-trip code review with difit — preload AI comments, pick up human replies via HTTP API |
