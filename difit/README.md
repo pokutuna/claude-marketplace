@@ -5,7 +5,7 @@ Plugin for round-trip code review with [difit](https://github.com/yoshiko-pg/dif
 ## What it adds
 
 - **`skills/difit-review`** — the main artifact. Instructs the agent to:
-  - launch difit with AI-authored line comments preloaded (`--comment` with `author: "ai"` and a `[ai]` body prefix so the human can spot AI comments at a glance),
+  - launch difit with AI-authored line comments preloaded (`--comment` with `author: "ai"` so the human can spot AI comments at a glance via difit's author label),
   - exchange comments with the human over difit's HTTP API **while the server keeps running** — no process kill required, no restart between rounds,
   - distinguish human vs. AI comments by the `author` field,
   - reply with `difit comment add` using `filePath` + `position` to attach to existing threads.

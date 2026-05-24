@@ -39,13 +39,15 @@ Decide what to attach as line comments before launching. Cover, in order of prio
 2. The intent / why behind non-obvious changes.
 3. A short summary of each substantial change ("extracted parseFoo from bar(); behaviour preserved").
 
-Set `author: "ai"` on every comment **and** prefix each `body` with `[ai] ` so AI-authored comments are obvious both programmatically (via `author`) and visually in the browser. Write the body in the user's language.
+Set `author: "ai"` on every comment so AI-authored comments are distinguishable both programmatically and in the browser UI (difit renders `author` as a label). Write the body in the user's language.
 
 ```bash
-difit <target> [compare-with] \
-  --comment '{"type":"thread","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":42},"body":"[ai] Extracted parseFoo() — pure refactor, no behaviour change. Want a sanity-check on naming."}' \
-  --comment '{"type":"thread","author":"ai","filePath":"src/bar.ts","position":{"side":"new","line":{"start":10,"end":18}},"body":"[ai] New error path for the 429 case. Intentionally bubbles up; please confirm that''s what you want."}'
+difit <target> [compare-with] --keep-alive \
+  --comment '{"type":"thread","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":42},"body":"Extracted parseFoo() — pure refactor, no behaviour change. Want a sanity-check on naming."}' \
+  --comment '{"type":"thread","author":"ai","filePath":"src/bar.ts","position":{"side":"new","line":{"start":10,"end":18}},"body":"New error path for the 429 case. Intentionally bubbles up; please confirm that''s what you want."}'
 ```
+
+**`--keep-alive` is mandatory.** Without it, difit exits as soon as the browser tab disconnects (SSE close), and subsequent HTTP API calls will fail with connection refused.
 
 Target conventions:
 
@@ -67,7 +69,7 @@ Run difit as a background task so you can keep working and still query its HTTP 
 
 ```bash
 # example (run_in_background: true)
-difit . --comment '...'
+difit . --keep-alive --comment '...'
 ```
 
 Then tell the user the URL.
@@ -97,11 +99,11 @@ To add new replies or new comments to the running session, use `difit comment ad
 ```bash
 # Reply to the thread on src/foo.ts:42
 difit comment add --port <port> \
-  '{"type":"reply","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":42},"body":"[ai] Good catch — fixed in the next commit."}'
+  '{"type":"reply","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":42},"body":"Good catch — fixed in the next commit."}'
 
 # A brand new finding on a new line:
 difit comment add --port <port> \
-  '{"type":"thread","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":99},"body":"[ai] Realised this branch needs a unit test. Adding one."}'
+  '{"type":"thread","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":99},"body":"Realised this branch needs a unit test. Adding one."}'
 ```
 
 The human sees new threads / replies live in the browser. Then go back to Step 2 when they reply. This is the entire loop — Step 2 ↔ Step 3, indefinitely.
@@ -134,7 +136,7 @@ There is **no "Finish Review" button** in difit's UI. Do not tell the user to pr
     "side": "new",         // "new" = post-change side, "old" = deleted side
     "line": 42             // or { "start": 36, "end": 39 } for a range
   },
-  "body": "[ai] comment text in the user's language"
+  "body": "comment text in the user's language"
 }
 ```
 
