@@ -5,7 +5,7 @@
 # Required: Pod name
 name = "my-project"
 
-# Required: GPU type (use `runpodctl get gpus` or stocks skill to find options)
+# Required: GPU type (use `runpodctl gpu list` or stocks skill to find options)
 gpu_type = "NVIDIA RTX 5090"
 
 # Required: Container image

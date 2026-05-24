@@ -6,8 +6,10 @@
 """
 RunPod Pod Creation Script
 
-Reads config from runpod.toml and runs runpodctl create pod.
+Reads config from runpod.toml and runs `runpodctl pod create`.
 With --ssh, automatically waits and connects via SSH after creation.
+
+Requires runpodctl >= 2.1.7 (for --network-volume-id support on the new `pod create` form).
 
 Usage:
   uv run --script create_pod.py                # Create a pod
@@ -19,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
@@ -84,52 +87,48 @@ def load_config(config_path: Path) -> dict:
     return config
 
 
-def build_env_vars(config: dict) -> list[str]:
-    env = dict(config.get("env", {}))
+def build_env_vars(config: dict) -> dict[str, str]:
+    env = {key: str(value) for key, value in config.get("env", {}).items()}
 
     quota_gb = config.get("volume", {}).get("quota_gb")
     if quota_gb is not None:
         env.setdefault("WORKSPACE_QUOTA_GB", str(quota_gb))
 
-    return [f"{key}={value}" for key, value in env.items()]
+    return env
 
 
-def build_create_command(config: dict, env_vars: list[str]) -> list[str]:
+def build_create_command(config: dict, env_dict: dict[str, str]) -> list[str]:
     pod = config["pod"]
     volume = config.get("volume", {})
 
     cmd = [
         "runpodctl",
-        "create",
         "pod",
+        "create",
         "--name",
         pod["name"],
-        "--gpuType",
+        "--gpu-id",
         pod["gpu_type"],
-        "--imageName",
+        "--image",
         pod["image"],
-        "--containerDiskSize",
+        "--container-disk-in-gb",
         str(pod["container_disk_size"]),
-        "--startSSH",
     ]
 
     if pod.get("gpu_count", 1) > 1:
-        cmd += ["--gpuCount", str(pod["gpu_count"])]
+        cmd += ["--gpu-count", str(pod["gpu_count"])]
 
     if pod.get("datacenter_id"):
-        cmd += ["--dataCenterId", pod["datacenter_id"]]
+        cmd += ["--data-center-ids", pod["datacenter_id"]]
 
-    if pod.get("secure_cloud"):
-        cmd.append("--secureCloud")
+    cmd += ["--cloud-type", "SECURE" if pod.get("secure_cloud") else "COMMUNITY"]
 
     network_volume_id = volume.get("network_volume_id")
     if network_volume_id:
         cmd += [
-            "--networkVolumeId",
+            "--network-volume-id",
             network_volume_id,
-            "--volumeSize",
-            "0",
-            "--volumePath",
+            "--volume-mount-path",
             volume.get("volume_path", "/workspace"),
         ]
 
@@ -139,10 +138,10 @@ def build_create_command(config: dict, env_vars: list[str]) -> list[str]:
 
     startup_command = pod.get("startup_command")
     if startup_command:
-        cmd += ["--args", startup_command]
+        cmd += ["--docker-args", startup_command]
 
-    for var in env_vars:
-        cmd += ["--env", var]
+    if env_dict:
+        cmd += ["--env", json.dumps(env_dict)]
 
     return cmd
 
@@ -151,6 +150,14 @@ def create_pod(cmd: list[str]) -> str | None:
     result = subprocess.run(cmd, capture_output=True, text=True)
     output = result.stdout + result.stderr
     print(output.rstrip())
+
+    try:
+        data = json.loads(result.stdout)
+        pod_id = data.get("id") or data.get("pod", {}).get("id")
+        if pod_id:
+            return pod_id
+    except json.JSONDecodeError:
+        pass
 
     match = re.search(r'pod "([a-z0-9]+)"', output)
     return match.group(1) if match else None
@@ -177,14 +184,13 @@ def wait_for_ssh(pod_id: str, timeout: int = 300, interval: int = 5) -> str | No
     start = time.time()
     while time.time() - start < timeout:
         result = subprocess.run(
-            ["runpodctl", "ssh", "connect", pod_id],
+            ["runpodctl", "ssh", "info", pod_id],
             capture_output=True,
             text=True,
         )
-        output = result.stdout + result.stderr
-        if "ssh " in output:
+        if result.returncode == 0 and '"ssh_command"' in result.stdout:
             print()
-            return output
+            return result.stdout
 
         elapsed = int(time.time() - start)
         print(f"  Not ready yet... ({elapsed}s/{timeout}s)", file=sys.stderr)
@@ -194,13 +200,16 @@ def wait_for_ssh(pod_id: str, timeout: int = 300, interval: int = 5) -> str | No
 
 
 def parse_ssh_command(ssh_info: str) -> list[str]:
-    for line in ssh_info.splitlines():
-        line = line.strip()
-        if line.startswith("ssh "):
-            return shlex.split(line)
+    try:
+        data = json.loads(ssh_info)
+        ssh_command = data.get("ssh_command")
+        if ssh_command:
+            return shlex.split(ssh_command)
+    except json.JSONDecodeError:
+        pass
 
     print(
-        f"Error: Could not parse SSH command from output:\n{ssh_info}", file=sys.stderr
+        f"Error: Could not parse ssh_command from output:\n{ssh_info}", file=sys.stderr
     )
     sys.exit(1)
 
@@ -313,7 +322,7 @@ def main() -> None:
 
     print()
     print(f"Pod created: {pod_id}")
-    print("Check status: runpodctl get pod")
+    print("Check status: runpodctl pod list")
 
     if not args.ssh:
         return
@@ -323,7 +332,7 @@ def main() -> None:
     ssh_info = wait_for_ssh(pod_id)
 
     if not ssh_info:
-        print(f"Timed out. Try: runpodctl ssh connect {pod_id}", file=sys.stderr)
+        print(f"Timed out. Try: runpodctl ssh info {pod_id}", file=sys.stderr)
         sys.exit(1)
 
     ssh_cmd = parse_ssh_command(ssh_info)

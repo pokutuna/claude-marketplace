@@ -201,14 +201,13 @@ def wait_for_ssh(pod_id: str, timeout: int = 300, interval: int = 5) -> str | No
     start = time.time()
     while time.time() - start < timeout:
         result = subprocess.run(
-            ["runpodctl", "ssh", "connect", pod_id],
+            ["runpodctl", "ssh", "info", pod_id],
             capture_output=True,
             text=True,
         )
-        output = result.stdout + result.stderr
-        if "ssh " in output:
+        if result.returncode == 0 and '"ssh_command"' in result.stdout:
             print()
-            return output
+            return result.stdout
 
         elapsed = int(time.time() - start)
         print(f"  Not ready yet... ({elapsed}s/{timeout}s)", file=sys.stderr)
@@ -218,13 +217,16 @@ def wait_for_ssh(pod_id: str, timeout: int = 300, interval: int = 5) -> str | No
 
 
 def parse_ssh_command(ssh_info: str) -> list[str]:
-    for line in ssh_info.splitlines():
-        line = line.strip()
-        if line.startswith("ssh "):
-            return shlex.split(line)
+    try:
+        data = json.loads(ssh_info)
+        ssh_command = data.get("ssh_command")
+        if ssh_command:
+            return shlex.split(ssh_command)
+    except json.JSONDecodeError:
+        pass
 
     print(
-        f"Error: Could not parse SSH command from output:\n{ssh_info}",
+        f"Error: Could not parse ssh_command from output:\n{ssh_info}",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -325,7 +327,7 @@ def main() -> None:
 
     cost = result.get("costPerHr", "?")
     print(f'Pod created: "{pod_id}" for ${cost} / hr')
-    print("Check status: runpodctl get pod")
+    print("Check status: runpodctl pod list")
 
     if not args.ssh:
         return
@@ -335,7 +337,7 @@ def main() -> None:
     ssh_info = wait_for_ssh(pod_id)
 
     if not ssh_info:
-        print(f"Timed out. Try: runpodctl ssh connect {pod_id}", file=sys.stderr)
+        print(f"Timed out. Try: runpodctl ssh info {pod_id}", file=sys.stderr)
         sys.exit(1)
 
     ssh_cmd = parse_ssh_command(ssh_info)

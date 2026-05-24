@@ -8,7 +8,7 @@ description: |
   Do NOT use for managing existing pods (stop, remove, list).
 metadata:
   author: pokutuna
-  version: 0.2.0
+  version: 0.3.0
 allowed-tools:
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py:*)"
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_cpu_pod.py:*)"
@@ -23,6 +23,13 @@ Create RunPod pod instances from a `runpod.toml` configuration file.
 - Pods incur costs while running. If creation or SSH fails, confirm with the user and stop/remove the pod
 - CPU pods have a max container disk of **20GB**
 - CPU pods: if `datacenter_id` in runpod.toml is not accepted by the REST API, use `--datacenter ""` to auto-place near the Network Volume
+- **CPU pod defaults are tiny**: `cpu3c` + `--vcpu 2` = **4 GB RAM**. Large file downloads (e.g. `hf download` of multi-GB model shards) will SIGKILL (exit 137) due to cgroup memory limit. For HF model downloads, use `--cpu-flavor cpu3g --vcpu 4` (16 GB) or larger.
+- **Use the non-deprecated runpodctl commands** (legacy forms still work but emit a deprecation warning):
+  - Create pod: `runpodctl pod create` (NOT `runpodctl create pod`)
+  - List pods: `runpodctl pod list` (NOT `runpodctl get pod`)
+  - SSH info: `runpodctl ssh info <pod-id>` (NOT `runpodctl ssh connect <pod-id>`)
+  - GPU types: `runpodctl gpu list` (NOT `runpodctl get gpus`)
+- `create_pod.py` requires **runpodctl >= 2.1.7** (for `--network-volume-id` on the new `pod create` form)
 
 ## Prerequisites
 
