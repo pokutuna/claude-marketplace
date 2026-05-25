@@ -1,10 +1,6 @@
 ---
 name: uv-docker
-description: |
-  This skill should be used when the user asks to "use uv in Docker",
-  "write a Dockerfile with uv", "uv sync in Docker", "uv multi-stage build",
-  or when writing a Dockerfile that uses uv for Python dependency installation.
-  Guides uv-based multi-stage container builds.
+description: Guide uv-based multi-stage Dockerfile builds. Use when writing a Dockerfile that installs Python deps via uv.
 ---
 
 # Python Docker Images with uv

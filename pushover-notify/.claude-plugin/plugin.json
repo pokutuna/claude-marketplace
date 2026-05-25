@@ -1,7 +1,7 @@
 {
   "name": "pushover-notify",
-  "description": "Send Pushover notifications when Claude Code needs your attention (idle or permission prompt). Includes repo/cwd and last assistant activity; mutes audio for repeats within the same session (180s window). Skips when display is on (macOS).",
-  "version": "0.3.0",
+  "description": "Push notifications via Pushover when idle or asks for permission.",
+  "version": "0.3.1",
   "author": {
     "name": "pokutuna"
   },

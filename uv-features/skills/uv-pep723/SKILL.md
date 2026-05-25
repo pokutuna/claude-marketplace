@@ -1,10 +1,6 @@
 ---
 name: uv-pep723
-description: |
-  This skill should be used when writing a Python script that uses uv,
-  or when the user mentions "uv run", "PEP 723", "uv run --with",
-  "inline script metadata". Guides writing self-contained Python scripts
-  with inline dependency metadata.
+description: Guide writing self-contained Python scripts with PEP 723 inline dependency metadata. Use when writing scripts that use uv, or for "uv run", "uv run --with".
 ---
 
 # PEP 723 Inline Scripts with uv

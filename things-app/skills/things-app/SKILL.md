@@ -1,9 +1,6 @@
 ---
 name: things-app
-description: |
-  Read and update tasks in Things 3 app.
-  Use when user mentions "things", "today tasks", "inbox", "todo", "タスク",
-  "what's on my plate", "things project", "things area", "今日のタスク".
+description: Create and update private personal todos in the Things 3 app. "things" などで起動。
 metadata:
   author: pokutuna
   version: 0.7.1

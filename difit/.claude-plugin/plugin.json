@@ -1,7 +1,7 @@
 {
   "name": "difit",
-  "description": "Round-trip code review with difit between humans and AI. Loads AI-authored line comments at launch, then exchanges replies with the human over difit's HTTP API while the server keeps running.",
-  "version": "0.2.0",
+  "description": "Round-trip code review with difit.",
+  "version": "0.2.1",
   "author": {
     "name": "pokutuna"
   },

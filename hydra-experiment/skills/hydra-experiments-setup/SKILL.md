@@ -1,9 +1,6 @@
 ---
 name: experiment-setup
-description: |
-  Hydra による設定管理パターンをガイドする。
-  Use when user mentions "hydra", "hydra.main", "ConfigStore", "OmegaConf",
-  "config.yaml with defaults", "exp/*.yaml", "@_here_", or "--cfg job".
+description: Guide Hydra configuration management patterns for ML projects. "hydra", "OmegaConf" などで起動。
 metadata:
   author: pokutuna
   version: 0.2.0

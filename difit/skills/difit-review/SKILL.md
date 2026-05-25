@@ -1,6 +1,6 @@
 ---
 name: difit-review
-description: Round-trip code review through difit. Use to (a) open difit with AI-authored explanations or review findings preloaded as line comments, (b) retrieve human comments from a running difit via the HTTP API (no process kill needed), and (c) loop: read human replies, answer them as new comments, repeat. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", "review this PR locally", or wants the AI to explain its own code changes to a human reviewer.
+description: Round-trip code review through difit. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", or "review this PR locally".
 metadata:
   author: pokutuna
   version: 0.2.0

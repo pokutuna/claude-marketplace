@@ -1,6 +1,6 @@
 ---
 name: pushover-notify
-description: Toggle Pushover push notifications for Claude Code idle/permission prompts. Use when user mentions "pushover", "toggle pushover", "enable/disable notification".
+description: Toggle Pushover push notifications on/off. "pushover", "toggle pushover" などで起動。
 metadata:
   author: pokutuna
   version: 0.2.2

@@ -1,9 +1,6 @@
 ---
 name: volume-storage
-description: |
-  Manage files on RunPod Network Volume via S3-compatible API.
-  Use when user mentions "volume storage", "network volume", "upload to volume",
-  "download from volume", "volume ls", "volume files", "ボリューム", "ストレージ".
+description: List and download files on RunPod Network Volume via S3 API. "runpod volume", "network volume" などで起動。
 metadata:
   author: pokutuna
   version: 0.1.1

@@ -1,8 +1,6 @@
 ---
 name: meta-kaggle
-description: |
-  終了済みコンペの discussion・チーム情報を meta-kaggle から検索・分析する。終了前のコンペのデータは含まれない。
-  Use when: "meta-kaggle", "上位解法", "過去コンペ discussion"
+description: 終了済みコンペの discussion・チーム情報を meta-kaggle から検索・分析（終了前のコンペは対象外）。"meta-kaggle", "上位解法" などで起動。
 metadata:
   author: pokutuna
   version: 0.3.1

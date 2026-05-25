@@ -1,7 +1,7 @@
 {
   "name": "uv-features",
   "description": "Recommend lesser-known uv features like PEP 723 inline scripts, uv run --with, uvx, and more. Nudges Claude to use powerful uv capabilities instead of plain pip/python.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "pokutuna"
   },

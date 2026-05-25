@@ -1,7 +1,7 @@
 {
   "name": "side-fork",
   "description": "Fork the current Claude session and open the fork in a new tmux or screen window, so the new window becomes the experimental branch.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "pokutuna"
   },

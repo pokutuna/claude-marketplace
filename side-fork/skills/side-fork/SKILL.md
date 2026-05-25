@@ -1,6 +1,6 @@
 ---
 name: side-fork
-description: Fork the current Claude session and open the fork in a new tmux or screen window. This terminal continues as the original session; the new window becomes the experimental branch.
+description: Fork the current Claude session into a new tmux or screen window.
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/bin/side-fork.sh *)"
 disable-model-invocation: true
 metadata:

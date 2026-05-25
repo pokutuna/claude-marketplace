@@ -1,11 +1,6 @@
 ---
 name: create-pod
-description: |
-  Create RunPod GPU or CPU pod instances from runpod.toml configuration.
-  Use when user mentions "create pod", "launch pod", "runpod ssh",
-  "pod 立てて", "pod 作成", "runpod 起動",
-  "cpu pod", "CPU インスタンス", "GPU なしで pod".
-  Do NOT use for managing existing pods (stop, remove, list).
+description: Create RunPod GPU/CPU pods from runpod.toml. "create pod", "launch pod", "pod 立てて" などで起動。
 metadata:
   author: pokutuna
   version: 0.4.0

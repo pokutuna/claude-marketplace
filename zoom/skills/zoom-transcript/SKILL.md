@@ -1,9 +1,6 @@
 ---
 name: zoom-transcript
-description: |
-  Extract VTT transcript from a Zoom recording share page.
-  Use when user mentions "zoom transcript", "zoom recording", "zoom 文字起こし",
-  "zoom 録画", "zoom 書き起こし", "zoom VTT", "recording transcript".
+description: Extract VTT transcript from a Zoom recording share page. "zoom transcript", "zoom 文字起こし" などで起動。
 metadata:
   author: pokutuna
   version: 0.1.0

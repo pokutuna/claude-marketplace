@@ -1,10 +1,6 @@
 ---
 name: stocks
-description: |
-  Query RunPod GPU availability and suggest GPUs/datacenters matching requirements.
-  Filter by memory, generation, Network Volume support, and stock level.
-  Use when user mentions "runpod gpu", "gpu availability", "gpu stock",
-  "runpod datacenter", "network volume gpu", "which gpu available".
+description: Query RunPod GPU availability and suggest matching GPUs/datacenters.
 metadata:
   author: pokutuna
   version: 0.1.0

@@ -1,6 +1,6 @@
 ---
 name: vertexai-gemini-batch
-description: This skill should be used when the user asks to "create Gemini batch request", "prepare batch input for Gemini", "run Vertex AI batch API", or needs guidance on Vertex AI batch prediction setup.
+description: Generate batch input and run Vertex AI Batch Prediction for Gemini via google-genai SDK.
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep, AskUserQuestion
 user-invocable: true
 ---

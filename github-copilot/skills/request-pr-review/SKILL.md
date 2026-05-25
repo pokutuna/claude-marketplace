@@ -1,8 +1,6 @@
 ---
 name: request-pr-review
-description: >-
-  Request GitHub Copilot review on a Pull Request.
-  Use when: "request-pr-review", "PR レビュー依頼", "PR レビューリクエスト", "copilot review"
+description: Request GitHub Copilot review on a Pull Request. "PR レビュー依頼", "copilot review" などで起動。
 metadata:
   author: pokutuna
   version: 0.2.0

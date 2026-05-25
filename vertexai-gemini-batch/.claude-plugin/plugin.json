@@ -1,6 +1,6 @@
 {
   "name": "vertexai-gemini-batch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generate batch input files and run Vertex AI Batch Prediction for Gemini",
   "author": {
     "name": "pokutuna"

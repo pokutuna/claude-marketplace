@@ -1,8 +1,6 @@
 ---
 name: ask-copilot
-description: >-
-  Ask GitHub Copilot CLI for a second AI opinion.
-  Use when: "ask-copilot", "copilot", "second opinion", "壁打ち"
+description: Ask GitHub Copilot CLI for a second AI opinion. "ask copilot", "copilot と相談" などで起動。
 metadata:
   author: pokutuna
   version: 0.4.2

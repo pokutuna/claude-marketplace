@@ -1,9 +1,6 @@
 ---
 name: investigate-logging
-description: |
-  Google Cloud Logging を gcloud logging read で取得し、jq/duckdb で分析するスキル。
-  Use when: "Cloud Logging", "gcloud logging", "GCP ログ調査", "GKE ログ", "Cloud Run ログ", "Cloud Audit Logs", "resource.type", "httpRequest.latency"
-  Do NOT use for: 一般的なログファイル操作、AWS CloudWatch、Azure Monitor、ローカルログ
+description: Google Cloud Logging を gcloud logging read で取得し jq/duckdb で分析。"Cloud Logging", "GCP ログ調査", "GKE ログ", "Cloud Run ログ" などで起動。
 allowed-tools:
   - Bash(timeout *)
   - Bash(gcloud logging *)

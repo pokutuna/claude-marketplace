@@ -1,9 +1,6 @@
 ---
 name: uv-tools
-description: |
-  This skill should be used when the user asks to "use uvx", "uv tool run",
-  "uv tool install", "run a tool with uvx", or when running Python CLI tools
-  via uv. Guides uvx and uv tool install usage.
+description: Guide uvx and uv tool install usage. Use when running Python CLI tools via uv.
 ---
 
 # Python CLI Tools with uvx

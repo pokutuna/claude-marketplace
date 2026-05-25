@@ -1,10 +1,6 @@
 ---
 name: prepare-model-upload
-description: |
-  Download HuggingFace models on Colab and upload to RunPod Network Volume via S3-compatible API.
-  Pre-deploy models before GPU instance startup to save billing time.
-  Use when user mentions "runpod model upload", "network volume model",
-  "colab to runpod", "HuggingFace model to runpod", "S3 sync runpod".
+description: Upload HuggingFace models from Colab to RunPod Network Volume.
 metadata:
   author: pokutuna
   version: 0.2.0
