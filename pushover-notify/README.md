@@ -1,15 +1,23 @@
 # pushover-notify
 
-Send [Pushover](https://pushover.net/) push notifications when Claude Code needs your attention — idle prompts or permission requests.
+Send [Pushover](https://pushover.net/) push notifications from Claude Code — automatically when Claude needs your attention, or on demand when you (or Claude) want to push a message to your phone.
 
 ## Features
 
-- Fires on `Notification` events (idle prompts and permission requests)
+Two entry points share one bundled CLI (`bin/notify.sh`):
+
+**Automatic hook** (`Notification` event)
+- Fires on idle prompts and permission requests
 - **Display-aware (macOS)**: skips sending when the display is on, so you only get pinged when you're actually away
 - **Context-rich body**: title shows the repository name (cwd basename); body includes the hook message plus a short excerpt of the last assistant turn so you can tell at a glance what finished
-- **Per-session quiet window**: 180 seconds. Repeats from the *same* session are delivered silently (`sound=none`, low priority) instead of being dropped; notifications from a *different* session always play a sound
+- **Per-session quiet window**: 180 seconds. Repeats from the *same* session are delivered silently (`sound=none`, low priority); a different session always plays a sound
 - **Disabled by default**: opt-in via the `pushover-notify` skill (`pushover on`)
 - Silent on failure: hook never disrupts Claude Code
+
+**On-demand `send`** (skill / user / AI)
+- Full-featured `pushover` CLI built in: title, priority, sound, attachment, URL, stdin, presets (`--done` / `--error` / `--emergency`)
+- Ignores the enable flag — explicit action by you or the assistant
+- Trigger with phrases like "pushover で通知して", "終わったら pushover で知らせて"
 
 ## Installation
 
@@ -41,11 +49,21 @@ claude plugin install pushover-notify@pokutuna-plugins --scope user
 
 ## Usage
 
-The plugin exposes a Skill triggered by phrases like:
+The plugin exposes a Skill that covers both responsibilities.
+
+**Toggle the auto-notification hook** (natural language):
 
 - `pushover on` / `pushover off` — enable / disable
 - `pushover toggle` — flip current state
 - `pushover status` — show state, credentials, display detection, last sent
+
+**Send a notification now** (skill / user / AI):
+
+- `pushover で「終わった」って通知して`
+- `ビルド完了したら pushover で知らせて` (Claude が完了時に `send --done` を呼ぶ)
+- `エラーになったら pushover で alert 出して` (`send --error`)
+
+Internally these run `${CLAUDE_PLUGIN_ROOT}/bin/notify.sh send [OPTIONS] [MESSAGE]`. Options mirror a standalone `pushover` CLI: `-t/--title`, `-p/--priority`, `-s/--sound`, `-a/--attach`, `-u/--url`, `-U/--url-title`, `-q/--quiet`, plus presets `--done` / `--error` / `--emergency`. Stdin is read when MESSAGE is omitted. Run `notify.sh send --help` for full details.
 
 Example `pushover status` output:
 

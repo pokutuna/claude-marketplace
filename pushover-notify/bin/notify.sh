@@ -2,28 +2,34 @@
 # notify.sh - Pushover notification control for Claude Code
 #
 # Subcommands:
-#   enable           Enable notifications globally
-#   disable          Disable notifications globally
-#   toggle           Flip enabled/disabled
-#   status           Show current state
-#   send             Hook mode: read JSON from stdin and send notification
+#   enable                       Enable hook notifications globally
+#   disable                      Disable hook notifications globally
+#   toggle                       Flip enabled/disabled
+#   status                       Show current state
+#   send [OPTIONS] [MESSAGE]     Send a notification now (skill / user / AI)
+#   hook                         Hook mode: read JSON from stdin, apply
+#                                enable/display/cooldown gates, then send
+#
+# `send` ignores the enable flag — it is an explicit action. `hook` is the
+# gated entry point used by the Notification hook.
 #
 # State file (git-config format):
 #   ${XDG_STATE_HOME:-~/.local/state}/claude-pushover-notify.conf
-#     [global] enabled    = true|false
-#     [global] last-sent  = <epoch>          # last successful send time (any session)
-#     [global] last-session = <session-id>   # session that triggered the last send
+#     [global] enabled      = true|false
+#     [global] last-sent    = <epoch>          # last hook send time (any session)
+#     [global] last-session = <session-id>     # session that triggered last hook send
 #
 # Environment:
-#   PUSHOVER_TOKEN  (required for send/enable)
-#   PUSHOVER_USER   (required for send/enable)
+#   PUSHOVER_TOKEN  (required to actually send)
+#   PUSHOVER_USER   (required to actually send)
 
 set -uo pipefail
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
 CONFIG_FILE="$STATE_DIR/claude-pushover-notify.conf"
-# Within this window after the last send from the SAME session, the next
-# notification is delivered silently (sound=none) instead of being dropped.
+API_URL="https://api.pushover.net/1/messages.json"
+# Within this window after the last hook send from the SAME session, the next
+# hook notification is delivered silently (sound=none) instead of dropped.
 # Notifications from a DIFFERENT session always play a sound.
 QUIET_WINDOW_SEC=180
 
@@ -64,6 +70,57 @@ is_display_on() {
     value=$(pmset -g assertions 2>/dev/null \
         | awk '/^Assertion status system-wide:/{f=1; next} /^Listed by owning process:/{f=0} f && $1=="UserIsActive"{print $2; exit}')
     [[ "$value" == "1" ]]
+}
+
+parse_priority() {
+    case "$1" in
+        lowest|-2)    echo "-2" ;;
+        low|-1)       echo "-1" ;;
+        normal|0)     echo "0" ;;
+        high|1)       echo "1" ;;
+        emergency|2)  echo "2" ;;
+        *)            echo "$1" ;;
+    esac
+}
+
+# Core POST to Pushover API.
+# Reads named globals: TITLE PRIORITY SOUND ATTACH URL URL_TITLE RETRY EXPIRE MESSAGE QUIET
+# Returns 0 on API status:1, 1 otherwise.
+pushover_post() {
+    if ! check_credentials; then
+        echo "Error: PUSHOVER_TOKEN and PUSHOVER_USER must be set" >&2
+        return 1
+    fi
+    if [[ -z "${MESSAGE:-}" ]]; then
+        echo "Error: empty message" >&2
+        return 1
+    fi
+
+    local -a args=(
+        --form-string "token=$PUSHOVER_TOKEN"
+        --form-string "user=$PUSHOVER_USER"
+        --form-string "message=$MESSAGE"
+    )
+    [[ -n "${TITLE:-}" ]]     && args+=(--form-string "title=$TITLE")
+    [[ -n "${PRIORITY:-}" ]]  && args+=(--form-string "priority=$PRIORITY")
+    [[ -n "${SOUND:-}" ]]     && args+=(--form-string "sound=$SOUND")
+    [[ -n "${URL:-}" ]]       && args+=(--form-string "url=$URL")
+    [[ -n "${URL_TITLE:-}" ]] && args+=(--form-string "url_title=$URL_TITLE")
+    [[ -n "${RETRY:-}" ]]     && args+=(--form-string "retry=$RETRY")
+    [[ -n "${EXPIRE:-}" ]]    && args+=(--form-string "expire=$EXPIRE")
+
+    if [[ -n "${ATTACH:-}" ]]; then
+        if [[ ! -f "$ATTACH" ]]; then
+            echo "Error: attachment file not found: $ATTACH" >&2
+            return 1
+        fi
+        args+=(-F "attachment=@$ATTACH")
+    fi
+
+    local response
+    response=$(curl -s --max-time 10 "${args[@]}" "$API_URL")
+    [[ "${QUIET:-0}" -eq 0 ]] && echo "$response"
+    echo "$response" | grep -q '"status":1'
 }
 
 # Extract a short context summary from the transcript file.
@@ -143,17 +200,17 @@ cmd_status() {
     if command -v jq >/dev/null 2>&1; then
         echo "jq: available"
     else
-        echo "jq: missing (notifications will be skipped)"
+        echo "jq: missing (hook notifications will be skipped)"
     fi
 
     if command -v pmset >/dev/null 2>&1; then
         if is_display_on; then
-            echo "Display: on (notifications skipped)"
+            echo "Display: on (hook notifications skipped)"
         else
-            echo "Display: off (notifications sent)"
+            echo "Display: off (hook notifications sent)"
         fi
     else
-        echo "Display detection: unavailable (pmset not found, notifications always sent)"
+        echo "Display detection: unavailable (pmset not found, hook notifications always sent)"
     fi
 
     local last_sent last_session
@@ -169,7 +226,105 @@ cmd_status() {
     fi
 }
 
+send_usage() {
+    cat <<'EOF'
+Usage: notify.sh send [OPTIONS] [MESSAGE]
+
+Send a Pushover notification immediately. Ignores the enable/disable flag —
+this is an explicit action by the user or the AI.
+
+Options:
+  -t, --title TITLE         Notification title
+  -p, --priority LEVEL      lowest | low | normal | high | emergency
+                            or -2, -1, 0, 1, 2
+  -s, --sound NAME          pushover, magic, siren, spacealarm, none, ...
+  -a, --attach FILE         Attach an image file
+  -u, --url URL             Supplementary URL (tap to open)
+  -U, --url-title TITLE     Label for the supplementary URL
+  -q, --quiet               Suppress API response output
+
+Presets:
+      --done MESSAGE        ✅ Done (priority=normal, sound=magic)
+      --error MESSAGE       ⚠️ Error (priority=high, sound=siren)
+      --emergency MESSAGE   🚨 Emergency (rings until acknowledged)
+
+Stdin:
+  If MESSAGE is omitted, the message is read from stdin.
+
+Examples:
+  notify.sh send "終わった"
+  notify.sh send -t "ビルド" -p high "失敗しました"
+  notify.sh send --done "学習完了"
+  echo "$RESULT" | notify.sh send -t "結果"
+EOF
+}
+
 cmd_send() {
+    TITLE=""
+    PRIORITY=""
+    SOUND=""
+    ATTACH=""
+    URL=""
+    URL_TITLE=""
+    MESSAGE=""
+    RETRY=""
+    EXPIRE=""
+    QUIET=0
+    local preset=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -t|--title)       TITLE="$2"; shift 2 ;;
+            -p|--priority)    PRIORITY="$(parse_priority "$2")"; shift 2 ;;
+            -s|--sound)       SOUND="$2"; shift 2 ;;
+            -a|--attach)      ATTACH="$2"; shift 2 ;;
+            -u|--url)         URL="$2"; shift 2 ;;
+            -U|--url-title)   URL_TITLE="$2"; shift 2 ;;
+            -q|--quiet)       QUIET=1; shift ;;
+            --done)           preset="done";      MESSAGE="${2:-}"; shift 2 || shift ;;
+            --error)          preset="error";     MESSAGE="${2:-}"; shift 2 || shift ;;
+            --emergency)      preset="emergency"; MESSAGE="${2:-}"; shift 2 || shift ;;
+            -h|--help)        send_usage; exit 0 ;;
+            --)               shift; MESSAGE="$*"; break ;;
+            -*)               echo "Unknown option: $1" >&2; send_usage >&2; exit 1 ;;
+            *)                MESSAGE="$1"; shift ;;
+        esac
+    done
+
+    case "$preset" in
+        done)
+            : "${TITLE:=✅ Done}"
+            : "${PRIORITY:=0}"
+            : "${SOUND:=magic}"
+            ;;
+        error)
+            : "${TITLE:=⚠️ Error}"
+            : "${PRIORITY:=1}"
+            : "${SOUND:=siren}"
+            ;;
+        emergency)
+            : "${TITLE:=🚨 Emergency}"
+            PRIORITY="2"
+            : "${SOUND:=persistent}"
+            RETRY="60"
+            EXPIRE="3600"
+            ;;
+    esac
+
+    if [[ -z "$MESSAGE" ]]; then
+        if [[ ! -t 0 ]]; then
+            MESSAGE="$(cat)"
+        else
+            echo "Error: no message given" >&2
+            send_usage >&2
+            exit 1
+        fi
+    fi
+
+    pushover_post
+}
+
+cmd_hook() {
     [[ "$(get_enabled)" == "true" ]] || exit 0
     check_credentials || exit 0
     command -v jq >/dev/null 2>&1 || exit 0
@@ -187,60 +342,54 @@ cmd_send() {
     [[ -z "$hook_message" ]] && hook_message="needs your attention"
 
     # Title: "<repo>: <hook message>" so the lock-screen line itself carries
-    # both *which session* and *what state*. Falls back gracefully if either
-    # piece is missing. App name (Pushover client) already shows "Claude Code".
-    local repo title
+    # both *which session* and *what state*. App name already shows "Claude Code".
+    local repo
     repo=$(repo_label "$cwd")
     if [[ -n "$repo" ]]; then
-        title="$repo: $hook_message"
+        TITLE="$repo: $hook_message"
     else
-        title="$hook_message"
+        TITLE="$hook_message"
     fi
-    title=$(printf '%s' "$title" | cut -c1-80)
+    TITLE=$(printf '%s' "$TITLE" | cut -c1-80)
 
     # Body: the last assistant activity excerpt, if we can extract one.
-    # If not, fall back to the hook message so the notification is not empty
-    # (Pushover requires a non-empty message).
-    local summary message
+    # If not, fall back to the hook message so the notification is not empty.
+    local summary
     summary=$(transcript_summary "$transcript_path")
     if [[ -n "$summary" ]]; then
-        message="$summary"
+        MESSAGE="$summary"
     else
-        message="$hook_message"
+        MESSAGE="$hook_message"
     fi
 
     # Cooldown logic:
-    #   - different session within window -> deliver with sound (a new session
-    #     is a new alert worth hearing)
-    #   - same session within window      -> deliver silently (sound=none) so
-    #     repeated prompts from one session do not spam audio
+    #   - different session within window -> deliver with sound
+    #   - same session within window      -> deliver silently
     #   - otherwise                       -> deliver with default sound
-    local now last_sent last_session sound="" priority=""
+    SOUND=""
+    PRIORITY=""
+    local now last_sent last_session
     now=$(date +%s)
     last_sent=$(get_last_sent)
     last_session=$(get_last_session)
 
     if (( now - last_sent < QUIET_WINDOW_SEC )) \
         && [[ -n "$session_id" && "$session_id" == "$last_session" ]]; then
-        sound="none"
-        priority="-1"  # low priority: notification arrives, no sound/vibration
+        SOUND="none"
+        PRIORITY="-1"
     fi
 
     set_last_sent "$now"
     [[ -n "$session_id" ]] && set_last_session "$session_id"
 
-    local -a curl_args=(
-        --form-string "token=$PUSHOVER_TOKEN"
-        --form-string "user=$PUSHOVER_USER"
-        --form-string "title=$title"
-        --form-string "message=$message"
-    )
-    [[ -n "$sound"    ]] && curl_args+=(--form-string "sound=$sound")
-    [[ -n "$priority" ]] && curl_args+=(--form-string "priority=$priority")
+    ATTACH=""
+    URL=""
+    URL_TITLE=""
+    RETRY=""
+    EXPIRE=""
+    QUIET=1
 
-    curl -s --max-time 10 "${curl_args[@]}" \
-        https://api.pushover.net/1/messages.json >/dev/null 2>&1 || true
-
+    pushover_post || true
     exit 0
 }
 
@@ -249,9 +398,11 @@ case "${1:-}" in
     disable) cmd_disable ;;
     toggle)  cmd_toggle ;;
     status)  cmd_status ;;
-    send)    cmd_send ;;
+    send)    shift; cmd_send "$@" ;;
+    hook)    cmd_hook ;;
+    # Back-compat: previous hooks.json used `send` as the hook entry point.
     *)
-        echo "Usage: $0 {enable|disable|toggle|status|send}" >&2
+        echo "Usage: $0 {enable|disable|toggle|status|send|hook}" >&2
         exit 1
         ;;
 esac
