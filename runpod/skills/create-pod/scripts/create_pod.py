@@ -311,8 +311,25 @@ def ssh_in_tmux_window(ssh_cmd: list[str], remote_command: str | None) -> None:
     Opens a normal shell window so it stays open after SSH disconnects.
     """
     args = build_ssh_args(ssh_cmd, remote_command)
+    # Run the SSH command as the window's own shell command in a single tmux
+    # invocation. This is atomic: no separate send-keys step that could race
+    # against other processes creating/closing windows in between. After SSH
+    # exits we drop into an interactive shell so the window stays open.
+    window_cmd = f"{shlex.join(args)}; exec ${{SHELL:-/bin/sh}}"
+    # -P -F prints the new window's index/id so we can report the exact target.
     result = subprocess.run(
-        ["tmux", "new-window", ";", "send-keys", shlex.join(args), "Enter"]
+        [
+            "tmux",
+            "new-window",
+            "-P",
+            "-F",
+            "#{window_index}\t#{window_id}",
+            "sh",
+            "-c",
+            window_cmd,
+        ],
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         print(
@@ -320,7 +337,10 @@ def ssh_in_tmux_window(ssh_cmd: list[str], remote_command: str | None) -> None:
             file=sys.stderr,
         )
         os.execvp(args[0], args)
-    print("Opened new tmux window with SSH connection.")
+    window_index, _, window_id = result.stdout.strip().partition("\t")
+    print(f"Opened SSH connection in tmux window {window_index} ({window_id}).")
+    # window_id (@N) is stable across renumbering/close; prefer it for attaching.
+    print(f"Attach with: tmux select-window -t {window_id or window_index}")
 
 
 def main() -> None:
