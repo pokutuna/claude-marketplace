@@ -265,17 +265,45 @@ def build_ssh_args(ssh_cmd: list[str], remote_command: str | None) -> list[str]:
 
 
 def ssh_in_tmux_window(ssh_cmd: list[str], remote_command: str | None) -> None:
+    """Open a new local tmux window running SSH and report its index/id.
+
+    Runs SSH as the window's own command in a single `tmux new-window`
+    invocation, so there is no separate send-keys step that could race against
+    other processes creating/closing windows in between. After SSH exits we drop
+    into an interactive shell so the window stays open.
+    """
     args = build_ssh_args(ssh_cmd, remote_command)
+    window_cmd = f'{shlex.join(args)}; exec "${{SHELL:-/bin/sh}}"'
+    # -P -F prints the new window's index/id so we can report the exact target.
     result = subprocess.run(
-        ["tmux", "new-window", ";", "send-keys", shlex.join(args), "Enter"]
+        [
+            "tmux",
+            "new-window",
+            "-P",
+            "-F",
+            "#{window_index}\t#{window_id}",
+            "sh",
+            "-c",
+            window_cmd,
+        ],
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         print(
-            "Warning: Failed to open tmux window. Falling back to direct SSH.",
+            f"Warning: Failed to open tmux window: {result.stderr.strip()}\n"
+            "Falling back to direct SSH.",
             file=sys.stderr,
         )
         os.execvp(args[0], args)
-    print("Opened new tmux window with SSH connection.")
+    window_index, sep, window_id = result.stdout.strip().partition("\t")
+    if not sep:
+        # Unexpected -P output; the window exists but we can't report a target.
+        print("Opened SSH connection in a new tmux window.")
+        return
+    print(f"Opened SSH connection in tmux window {window_index} ({window_id}).")
+    # window_id (@N) is stable across renumbering/close; prefer it for attaching.
+    print(f"Attach with: tmux select-window -t {window_id}")
 
 
 def main() -> None:
