@@ -1,7 +1,7 @@
 {
   "name": "runpod",
   "description": "RunPod GPU cloud management plugin for Claude Code.",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "author": {
     "name": "pokutuna"
   },

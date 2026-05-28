@@ -193,6 +193,11 @@ def create_pod(
         if pattern in haystack:
             return None, pattern
 
+    # Unknown failure (not stock exhaustion): likely a config error such as a
+    # bad gpu-id or image. Show the raw output even on quiet retries so the
+    # cause is visible, then stop without retrying.
+    if not verbose:
+        print(output.rstrip(), file=sys.stderr)
     return None, None
 
 
