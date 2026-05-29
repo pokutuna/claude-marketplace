@@ -19,8 +19,10 @@ SAMPLE_RATE = 44100
 DURATION = 0.4  # seconds
 AMPLITUDE = 0.6
 
-# C4 = 261.63 Hz
-BASE_FREQ = 261.63
+# Derive C4 from the A4 = 440 Hz concert pitch (ISO 16) standard.
+# C4 is 9 semitones below A4: 440 / 2**(9/12) = 261.6256 Hz.
+A4_FREQ = 440.0
+BASE_FREQ = A4_FREQ * (2 ** (-9 / 12.0))
 
 # Major scale semitone offsets: C D E F G A B
 MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11]
