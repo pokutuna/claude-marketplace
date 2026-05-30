@@ -3,7 +3,7 @@ name: ask-copilot
 description: Ask GitHub Copilot CLI for a second AI opinion. "ask copilot", "copilot と相談" などで起動。
 metadata:
   author: pokutuna
-  version: 0.4.2
+  version: 0.5.0
   compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)
@@ -27,7 +27,7 @@ SHARE_FILE = !`bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh`
 copilot --model gpt-5.4 --effort medium \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
   --allow-all-paths \
-  --output-format text --no-color --no-ask-user \
+  --output-format text --no-color --no-ask-user --silent \
   --share="<上記 SHARE_FILE>" \
   -p "<prompt>"
 ```
@@ -92,7 +92,7 @@ AskUserQuestion の使い方:
 copilot --model <model> --effort <effort> \
   --available-tools='view,glob,rg,bash,web_fetch' --allow-all-tools --deny-tool='write' \
   --allow-all-paths \
-  --output-format text --no-color --no-ask-user \
+  --output-format text --no-color --no-ask-user --silent \
   --share="<冒頭で確定した SHARE_FILE>" \
   -p "$(cat <<'PROMPT'
 あなたは読み取り専用モードで動作しています。ファイルの読み取り、コード検索、シェルコマンドの実行は可能ですが、ファイルの編集や作成はできません。調査結果の報告のみ行ってください。
@@ -102,19 +102,19 @@ PROMPT
 )"
 ```
 
-`--share` により完了時にセッション全体が SHARE_FILE に markdown で保存される。後で参照できるよう、生成したパスを必ずユーザーに伝える。
+`--share` により完了時にセッション全体 (思考・ツール実行ログ・最終回答) が SHARE_FILE に markdown で保存される。後で参照できるよう、生成したパスを必ずユーザーに伝える。
 
 Bash ツールの timeout を 300000ms (5分) に設定すること。timeout しても copilot プロセスはバックグラウンドで継続し、完了時にファイルへ書き出される。
 
 ### 4. Present results
 
-Bash の timeout 内に完了した場合: 出力をそのまま表示し、末尾に保存先パス (SHARE_FILE の値) を明示する。
+Bash の timeout 内に完了した場合: stdout をそのまま表示する。冒頭に Copilot CLI による結果である旨を注記、末尾に保存先パス (SHARE_FILE の値) を明示する。
+
+思考過程やツール実行の詳細が必要になった場合は、SHARE_FILE を Read で読む (全文が残っている)。
 
 timeout した場合: copilot プロセスを kill してはならない。AskUserQuestion で「Copilot がまだ実行中です。待ちますか?」と確認する。
-待つ場合は SHARE_FILE を定期的に Read で読んで完了を待つ。
+待つ場合は SHARE_FILE を定期的に Read で読んで完了を待つ。完了後は最後の `### 💬 Copilot` セクション (最終回答) を読めばよい。
 待たない場合は、後で SHARE_FILE を読めることをパスとともに伝える。
-
-Copilot の出力を表示する際、冒頭に Copilot CLI による結果である旨を注記。
 
 ## Examples
 
