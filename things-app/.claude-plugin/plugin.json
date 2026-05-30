@@ -1,9 +1,15 @@
 {
   "name": "things-app",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Read and update tasks in Things 3",
   "author": {
     "name": "pokutuna"
   },
-  "keywords": ["things", "todo", "task", "applescript", "jxa"]
+  "keywords": [
+    "things",
+    "todo",
+    "task",
+    "applescript",
+    "jxa"
+  ]
 }

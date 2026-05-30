@@ -5,7 +5,6 @@ allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/bin/side-fork.sh *)"
 disable-model-invocation: true
 metadata:
   author: pokutuna
-  version: 0.1.0
 ---
 # side-fork
 

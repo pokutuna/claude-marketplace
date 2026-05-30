@@ -3,7 +3,6 @@ name: things-app
 description: Create and update private personal todos in the Things 3 app. "things" などで起動。
 metadata:
   author: pokutuna
-  version: 0.7.1
   compatibility: macOS with Things 3 installed
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/things-app/scripts/things.js *)"
 ---

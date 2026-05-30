@@ -1,10 +1,17 @@
 {
   "name": "github-copilot",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "GitHub Copilot CLI integration — second AI opinion and PR review requests",
   "author": {
     "name": "pokutuna"
   },
-  "keywords": ["copilot", "review", "code-review", "github", "second-opinion", "pull-request"],
+  "keywords": [
+    "copilot",
+    "review",
+    "code-review",
+    "github",
+    "second-opinion",
+    "pull-request"
+  ],
   "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/github-copilot"
 }

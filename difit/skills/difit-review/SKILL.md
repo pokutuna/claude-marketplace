@@ -3,7 +3,6 @@ name: difit-review
 description: Round-trip code review through difit. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", or "review this PR locally".
 metadata:
   author: pokutuna
-  version: 0.2.0
 allowed-tools:
   - "Bash(${CLAUDE_PLUGIN_ROOT}/bin/difit-comments *)"
   - "Bash(difit *)"

@@ -5,7 +5,6 @@ description: >-
 model_invocation: false
 metadata:
   author: pokutuna
-  version: 0.1.0
   compatibility: ">=1.0.0"
 allowed-tools:
   - Bash(${CLAUDE_PLUGIN_ROOT}/bin/toggle-plugin.sh *)

@@ -3,7 +3,6 @@ name: experiment-setup
 description: Guide Hydra configuration management patterns for ML projects. "hydra", "OmegaConf" などで起動。
 metadata:
   author: pokutuna
-  version: 0.2.0
 compatibility: requires hydra-core, omegaconf
 ---
 

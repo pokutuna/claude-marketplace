@@ -1,9 +1,15 @@
 {
   "name": "zoom",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Extract transcripts from Zoom recording share pages",
   "author": {
     "name": "pokutuna"
   },
-  "keywords": ["zoom", "transcript", "recording", "vtt", "playwright"]
+  "keywords": [
+    "zoom",
+    "transcript",
+    "recording",
+    "vtt",
+    "playwright"
+  ]
 }

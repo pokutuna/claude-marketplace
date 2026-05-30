@@ -3,7 +3,6 @@ name: volume-storage
 description: List and download files on RunPod Network Volume via S3 API. "runpod volume", "network volume" などで起動。
 metadata:
   author: pokutuna
-  version: 0.1.1
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/skills/volume-storage/scripts/volume_storage.sh *)"
 ---
 

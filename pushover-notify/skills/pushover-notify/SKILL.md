@@ -3,7 +3,6 @@ name: pushover-notify
 description: Pushover による通知の送信、および通知 hook の toggle。"pushover で通知", "pushover on/off/toggle/status" などで起動。
 metadata:
   author: pokutuna
-  version: 0.4.0
 allowed-tools:
   - "Bash(${CLAUDE_PLUGIN_ROOT}/bin/notify.sh *)"
 ---

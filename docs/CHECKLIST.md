@@ -14,15 +14,17 @@ Checklist for adding or updating plugins.
 ## Skill
 
 - [ ] Create `skills/<skill-name>/SKILL.md`
-  - frontmatter: name, description, metadata (author, version, compatibility)
+  - frontmatter: name, description, metadata (author, compatibility)
+  - Do NOT add `version` to SKILL.md. Versioning is managed only in `plugin.json` (Claude Code resolves the plugin version from `plugin.json` → marketplace entry → git SHA; SKILL.md `version` is never used for update detection)
   - Include trigger words in description
 - [ ] Reference scripts with `${CLAUDE_PLUGIN_ROOT}`
 - [ ] Add usage examples (Examples section)
 
 ## Version Update
 
-- [ ] Increment `version` in `plugin.json`
+- [ ] Increment `version` in `plugin.json` (the only place versions are tracked)
   - Marketplace is cached; changes won't reflect without version bump
+  - Skills do not carry their own version — bump the plugin instead
 
 ## Before Commit
 

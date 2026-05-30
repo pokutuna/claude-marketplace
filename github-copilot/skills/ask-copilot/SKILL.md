@@ -3,7 +3,6 @@ name: ask-copilot
 description: Ask GitHub Copilot CLI for a second AI opinion. "ask copilot", "copilot と相談" などで起動。
 metadata:
   author: pokutuna
-  version: 0.5.0
   compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)

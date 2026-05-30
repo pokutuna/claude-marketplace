@@ -3,7 +3,6 @@ name: meta-kaggle
 description: 終了済みコンペの discussion・チーム情報を meta-kaggle から検索・分析（終了前のコンペは対象外）。"meta-kaggle", "上位解法" などで起動。
 metadata:
   author: pokutuna
-  version: 0.3.1
 allowed-tools:
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/sync.py *)"
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/meta-kaggle/scripts/extract.py *)"
