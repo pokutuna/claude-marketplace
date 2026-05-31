@@ -404,10 +404,12 @@ function cmdCreate(title, opts) {
     );
   }
 
+  // Omit `at` so the task lands at the TOP of Inbox (UI shows newest first).
+  // Specifying `at: app.lists[LIST_INBOX]` appends to the bottom instead.
+  // Inbox is the default destination anyway; project/area/today below move it.
   const t = app.make({
     new: "toDo",
     withProperties: props,
-    at: app.lists[LIST_INBOX],
   });
 
   // Move to project/area after creation (creating directly in area causes Someday)
