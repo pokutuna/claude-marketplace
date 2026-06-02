@@ -90,11 +90,11 @@ rate_limits?: {
                                                     │
         wrapper.sh: stdin を state file に保存 → 元 statusLine に stdin パススルー
                                                     │
-              ~/.local/state/limit-usage-rate.json (five_h%, seven_d%, resets, ts)
+              ~/.local/state/cc-limit-usage-rate.json (five_hour%, seven_day%, resets, ts)
                                                     │
 [PreToolUse] guard.sh check ── 閾値(gitconfig)と比較 ── 超過なら deny
                                                     │
-[skill] /limit-usage ── 閾値設定 / setup(wrapper差し替えを対話的に案内) / teardown
+[skill] /limit-usage ── 閾値設定 / install(wrapper差し替えを対話的に案内) / uninstall
 ```
 
 ## ディレクトリ構成
@@ -105,7 +105,7 @@ limit-usage/
 ├── hooks/hooks.json                    # PreToolUse(全ツール) → guard.sh check
 ├── bin/
 │   ├── statusline-wrapper.sh           # stdin tee → 元コマンドへ pass-through
-│   └── guard.sh                        # check / set / off / status / setup / teardown
+│   └── guard.sh                        # check / set / off / status / install / uninstall
 ├── skills/limit-usage/SKILL.md
 ├── design.md                           # このファイル
 └── README.md
@@ -115,23 +115,23 @@ limit-usage/
 
 ### 1. statusline-wrapper.sh
 
-- stdin を読み、`rate_limits.{five_hour,seven_day}.{used_percentage,resets_at}` + 取得時刻 `ts` を rate state file に保存
-  - rate state file: `${XDG_STATE_HOME:-~/.local/state}/limit-usage-rate.json`
-  - 例: `{"five_h":42,"seven_d":18,"five_reset":1780417800,"seven_reset":...,"ts":<epoch>}`
-  - `rate_limits` 欠落時(無料枠・初回応答前)は書かない or null
-- 第1引数の元コマンドに stdin をそのままパススルーして実行(`~` 展開・実行ビット対応)
+- stdin を読み、`rate_limits` をそのまま + 取得時刻 `ts` を rate state file に保存(変換せず元構造を保持)
+  - rate state file: `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json`
+  - 例: `{"rate_limits":{"five_hour":{"used_percentage":42,"resets_at":1780417800},"seven_day":{...}},"ts":<epoch>}`
+  - `rate_limits` 欠落時(無料枠・初回応答前)は書かない(直前の snapshot を残す)
+- 第1引数の元コマンドに stdin をそのままパススルーして実行。元コマンドが無ければ何も出力しない(元々空だった statusLine は空のまま)
 - 元コマンドが無い(ユーザーが statusLine 未設定)場合は簡易表示 `5h: 42%` を自前で出力
 
 ### 2. guard.sh + gitconfig state
 
 閾値・退避情報の state file(gitconfig 形式、`allow-until` 流):
-`${XDG_STATE_HOME:-~/.local/state}/limit-usage.conf`
+`${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf`
 
 ```ini
 [global]
     five-hour = 80          ; 5h枠の使用率上限(%)。未設定=無効
     seven-day = 90          ; 7d枠の使用率上限(%)
-    orig-statusline = "~/.claude/statusline.ts"   ; teardown 用に退避した元コマンド
+    orig-statusline = "~/.claude/statusline.ts"   ; uninstall 用に退避した元コマンド
 [session "<CLAUDE_SESSION_ID>"]
     five-hour = 70          ; session 単位(既定の書き込み先・global より優先)
 ```
@@ -140,7 +140,7 @@ limit-usage/
 |---|---|---|---|
 | `five-hour` | 5h 枠の使用率上限(%) | `set 5h N`(既定 session / `--global` で global) | session.<id> → global → 無ければ無効 |
 | `seven-day` | 7d 枠の使用率上限(%) | `set 7d N` 同上 | 同上 |
-| `orig-statusline` | 退避した元 statusLine command | `setup` 時に global へ | `teardown` で復元 |
+| `orig-statusline` | 退避した元 statusLine command | `install` 時に global へ | `uninstall` で復元 |
 
 サブコマンド:
 
@@ -150,47 +150,47 @@ limit-usage/
    "permissionDecisionReason":"5h usage 82% ≥ limit 80%. Resets at 14:30."}}
   ```
   - **fail-open**: 閾値未設定 / rate state file 無し / `rate_limits` 欠落 / ts が古すぎる → `exit 0`(素通り)
-  - **自己デッドロック回避(重要)**: `tool_input.command` に `guard.sh` を含む呼び出しは閾値に関わらず常に素通り。guard 発動中もプラグイン自身の管理コマンド(`set` / `off` / `status` / `teardown`)は同じ Bash ツール経由なので、これを通さないと「閾値を下げて止めたのに下げ直す手段まで道連れ」でセッションが詰む。SKILL.md は guard.sh をフルパスで呼ぶため確実にマッチする(副作用: 文字列 `guard.sh` を含む任意コマンドも通るが、脱出ハッチがわずかに広いだけで実害なしと判断)
+  - **自己デッドロック回避(重要)**: `tool_input.command` に `guard.sh` を含む呼び出しは閾値に関わらず常に素通り。guard 発動中もプラグイン自身の管理コマンド(`set` / `off` / `status` / `uninstall`)は同じ Bash ツール経由なので、これを通さないと「閾値を下げて止めたのに下げ直す手段まで道連れ」でセッションが詰む。SKILL.md は guard.sh をフルパスで呼ぶため確実にマッチする(副作用: 文字列 `guard.sh` を含む任意コマンドも通るが、脱出ハッチがわずかに広いだけで実害なしと判断)
 - **`set 5h 80%` / `set 7d 90%`**: 閾値を session(既定)or `--global` で global に書く
 - **`off`**: セッション(or `--global`)の閾値を削除
 - **`status`**: 現在の閾値設定 + rate state file の実残量を表示
-- **`setup`**: settings.json の `statusLine.command` を wrapper に差し替え(対話的、下記)
-- **`teardown`**: 退避した元コマンドに復元
+- **`install`**: settings.json の `statusLine.command` を wrapper に差し替え(対話的、下記)
+- **`uninstall`**: 退避した元コマンドに復元
 
 切り替えロジック(セッション/全体):
 - 書き込み先の選択(`--global` フラグ)で表現
 - 読み出しは常に `session.<id>` → `global` の順でフォールバック
 - 5h / 7d は独立した2キー(片方だけ設定も可)
 
-### 3. setup の受け入れやすさ(skill で案内)
+### 3. install の受け入れやすさ(skill で案内)
 
 原則: **勝手に settings.json を書き換えない**。skill が「提案 → 差分提示 → 同意 → 適用」。
 
-`/limit-usage setup` の流れ:
+`/limit-usage install` の流れ:
 1. 現 `statusLine.command` を読む
 2. before/after 差分を提示:
    ```
    現在:   "command": "~/.claude/statusline.ts"
    変更後: "command": ".../statusline-wrapper.sh '~/.claude/statusline.ts'"
-   （表示はそのまま。利用率を裏でファイルに記録します。元コマンドは退避し teardown で復元可)
+   （表示はそのまま。利用率を裏でファイルに記録します。元コマンドは退避し uninstall で復元可)
    ```
 3. 同意を得てから settings.json を編集(AskUserQuestion)
 4. statusLine 未設定のユーザーには「wrapper だけ入れますか?(簡易表示も出ます)」と案内
-5. `teardown` でワンコマンド復元。アンインストール手順は README に明記
-6. **冪等**: setup を再実行しても二重ラップしない(既に wrapper なら何もしない)
+5. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
+6. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
 
 ### 4. SKILL.md
 
-`/limit-usage` の操作集約: `setup` / `set 5h 80%`(`--global`)/ `off` / `status` / `teardown`
+`/limit-usage` の操作集約: `install` / `set 5h 80%`(`--global`)/ `off` / `status` / `uninstall`。frontmatter `argument-hint` で引数ヒントを表示
 
 ## 設計上の注意点
 
 - **測定コストゼロ**: `-p` を使わない。本体の通常応答に相乗りした `rate_limits` のみ
-- **可逆性**: wrapper 差し替えは元コマンドを退避し teardown で完全復元。settings を壊さない
+- **可逆性**: wrapper 差し替えは元コマンドを退避し uninstall で完全復元。settings を壊さない
 - **無料枠 / 初回応答前**: `rate_limits` が来ない → fail-open(素通り、警告ログのみ)
 - **state file の鮮度**: statusLine は毎応答 + `refreshInterval` で更新。古すぎる ts なら素通り(安全側)
 - **閾値の意味**: `used_percentage` の上限(`set 5h 80%` = 5h 枠を 80% 使ったら止める)
-- **自己デッドロック回避**: guard 発動中も `set`/`off`/`status`/`teardown` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
+- **自己デッドロック回避**: guard 発動中も `set`/`off`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
 
 ## 参考にする既存プラグイン
 

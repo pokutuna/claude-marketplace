@@ -11,17 +11,17 @@ When a rate-limit window (5-hour or 7-day) passes a usage threshold you set, thi
 - **Zero metering cost**: usage % is captured from the normal statusLine stream, not by spending quota to ask.
 - **Per-window thresholds**: independently limit the 5-hour and 7-day windows.
 - **Session or global scope**: set a limit for the current session or for all sessions (`--global`).
-- **Non-destructive setup**: wraps your existing statusLine command, preserving its display; one-command `teardown` restores it.
+- **Non-destructive install**: wraps your existing statusLine command, preserving its display; one-command `uninstall` restores it.
 - **Fail-open**: no usage data, stale data, or no threshold → tools run normally. It only blocks on a confirmed breach.
 
 ## Usage
 
-### One-time setup (required)
+### One-time install (required)
 
 The guard can only see usage after your statusLine is wrapped to capture it.
 
 ```
-/limit-usage setup
+/limit-usage install
 ```
 
 The skill reads your `settings.json`, shows a before/after diff, and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged; the original command is saved for restore.
@@ -53,7 +53,7 @@ The number is **used_percentage** (0–100): `80` means "80% used / 20% left".
 ### Restore your statusLine
 
 ```
-/limit-usage teardown
+/limit-usage uninstall
 ```
 
 ## Requirements
@@ -70,7 +70,7 @@ claude plugin install limit-usage@pokutuna-plugins --scope user
 
 > **Note:** We recommend installing with `--scope user` (default). See [Recommendation](https://github.com/pokutuna/claude-plugins#recommendation) for details.
 
-After installing, run `/limit-usage setup` once, then set your thresholds.
+After installing, run `/limit-usage install` once, then set your thresholds.
 
 ## How it works
 
@@ -87,19 +87,19 @@ flowchart LR
 ```
 
 1. Claude Code passes a JSON blob (including `rate_limits`) to the statusLine command on stdin. This is the only hook surface that receives it.
-2. `setup` wraps your statusLine with `statusline-wrapper.sh`, which tees the usage % into a state file and replays stdin to your original command unchanged.
+2. `install` wraps your statusLine with `statusline-wrapper.sh`, which tees the usage % into a state file and replays stdin to your original command unchanged.
 3. A `PreToolUse` hook runs `guard.sh check` before every tool call. It compares the captured usage against your thresholds (resolving session → global) and emits a `deny` decision when a window is at or over its limit.
 4. If there's no snapshot, the snapshot is stale, or no threshold is set, the guard stays silent and the tool runs.
 
 ## State files
 
-- `${XDG_STATE_HOME:-~/.local/state}/limit-usage-rate.json` — latest usage snapshot (written by the wrapper).
-- `${XDG_STATE_HOME:-~/.local/state}/limit-usage.conf` — thresholds + saved original statusLine, git-config format.
+- `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json` — latest usage snapshot (written by the wrapper).
+- `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf` — thresholds + saved original statusLine, git-config format.
 
-Snapshots older than 30 minutes are treated as stale (fail-open). Override with `LIMIT_USAGE_STALE_SECONDS`.
+Snapshots older than 5 minutes are treated as stale (fail-open). Override with `LIMIT_USAGE_STALE_SECONDS`.
 
 ## Uninstall
 
-1. `/limit-usage teardown` to restore your statusLine.
+1. `/limit-usage uninstall` to restore your statusLine.
 2. `claude plugin uninstall limit-usage@pokutuna-plugins` to remove the hook.
 3. Optionally remove the state files listed above.

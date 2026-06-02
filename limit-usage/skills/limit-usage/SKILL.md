@@ -1,58 +1,58 @@
 ---
 name: limit-usage
-description: Stop tool execution before exhausting your Claude rate limit. Set / clear per-window usage thresholds, check status, and wire up (setup) / restore (teardown) the statusLine usage capture. Triggers on "limit-usage", "set 5h 80%", "stop at N% usage", "usage limit".
+description: Stop tool execution before exhausting your Claude rate limit.
+disable-model-invocation: true
+argument-hint: "set 5h 80% | off [5h|7d] | status | install | uninstall [--global]"
 metadata:
   author: pokutuna
 allowed-tools:
   - "Bash(CLAUDE_SESSION_ID=* CLAUDE_PLUGIN_ROOT=* ${CLAUDE_PLUGIN_ROOT}/bin/guard.sh *)"
-  - "Bash(${CLAUDE_PLUGIN_ROOT}/bin/guard.sh *)"
   - Read
-  - Edit
+  # Pre-approve the common settings paths. If either is a symlink into a
+  # dotfiles repo, editing its real path falls outside these patterns and
+  # prompts for consent — which is what we want before touching that repo.
+  - "Edit(~/.claude/settings.json)"
+  - "Edit(.claude/settings.json)"
 ---
 
-Controls `limit-usage`: stop tool execution before a Claude rate-limit window passes a usage threshold. Usage is read from the statusLine snapshot at **zero metering cost** — no extra API calls.
+Stop tool execution before a Claude rate-limit window passes a usage threshold. Usage is read from the statusLine snapshot at zero metering cost.
 
 <ARGUMENTS>
 $ARGUMENTS
 </ARGUMENTS>
 
-Run guard.sh with the session id so per-session thresholds resolve:
+Run guard.sh with the session id (per-session thresholds need it):
 `CLAUDE_SESSION_ID=${CLAUDE_SESSION_ID} CLAUDE_PLUGIN_ROOT=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/bin/guard.sh <subcommand>`
 
-## Subcommand mapping
+## Subcommands
 
-- `set 5h 80%` / "stop 5h at 80" → `set 5h 80` (per session). Add `--global` for all sessions.
-- `set 7d 90%` → `set 7d 90` (per session, or `--global`).
-- `off` / `off 5h` / `off 7d` / "disable" → `off [5h|7d] [--global]`
-- `status` / "show usage" → `status`
-- `setup` → see **Setup** below (requires editing settings.json with consent).
-- `teardown` → see **Teardown** below.
-- Empty `$ARGUMENTS` → run `status`, then briefly remind the user that `setup` is required once before thresholds take effect.
+- `set 5h 80%` → `set 5h 80` (strip `%`). Add `--global` for all sessions, else per-session.
+- `set 7d 90%` → `set 7d 90`.
+- `off` / `off 5h` / `off 7d` / "disable" → `off [5h|7d] [--global]`.
+- `status` → `status`.
+- `install` / `uninstall` → see below.
+- Bare number or no window named (`90`, `set 90`) → **ask which window (5h / 7d / both) first; never guess.**
 
-Threshold meaning: the number is **used_percentage** (0–100). `set 5h 80` = stop once the 5-hour window is **80% used**. Reads resolve session → global → unset (unset = that window is not guarded).
+The number is `used_percentage` (0–100): `set 5h 80` stops once the 5h window is 80% used.
 
-After any `set`/`off`/`status`, report the result plainly.
+After `set`, also run `status`; if the wrapper is not installed, tell the user to run `install` (a threshold does nothing without it).
 
-## Setup (one time, requires consent)
+## install (requires consent — never edit settings.json without it)
 
-The guard only sees usage after the statusLine command is wrapped to capture it. **Never edit settings.json without showing the change and getting consent.**
+1. Pick the settings file: `~/.claude/settings.json` (or project `.claude/settings.json` if that's where the user keeps `statusLine`). **If it is a symlink, resolve it with `realpath` and edit the real file** — editing the link in place would replace it with a plain file and silently detach it from a dotfiles repo. Tell the user which real path you'll edit (e.g. `~/dotfiles/claude/settings.json`); for a dotfiles symlink that means their repo changes and they'll want to commit it.
+2. Read that file; find `statusLine.command`.
+3. `guard.sh install '<current statusLine.command>'` (empty string if none). Prints a before/after plan. On `ALREADY_WRAPPED`, say it's done and stop.
+4. Show before/after. Note: display is unchanged; the original is saved and restorable via `uninstall`.
+5. Confirm with **AskUserQuestion**. Only on approval, **Edit** the resolved file's `statusLine.command` to the `after:` value; keep `type` and `padding`.
+6. Guard activates after the next response (first statusLine refresh writes the snapshot).
 
-1. Read the user's `settings.json` (check `~/.claude/settings.json`; also mention project `.claude/settings.json` if present) and find `statusLine.command`.
-2. Run `guard.sh setup '<current statusLine.command>'` (pass an empty string if there is no statusLine). This prints a before/after plan and saves the original for teardown.
-   - If output is `ALREADY_WRAPPED`, tell the user it's already set up and stop.
-3. Show the before/after to the user and explain: *"This wraps your statusLine so usage % is recorded to a state file. Your status line display is unchanged; the original is saved and restorable with teardown."* If they had no statusLine, offer the minimal wrapper (it prints `5h: N% | 7d: N%`).
-4. Use **AskUserQuestion** to confirm. Only on approval, **Edit** settings.json to set `statusLine.command` to the `after:` value. Preserve `statusLine.type` (`"command"`) and `padding`.
-5. Tell the user the guard activates after the next assistant response (the first statusLine refresh writes the snapshot).
+## uninstall
 
-## Teardown
-
-1. Run `guard.sh teardown`. It prints either `RESTORE_TO` + the original command, or `RESTORE_REMOVE` (no original was saved).
-2. Read settings.json, show the change, confirm with **AskUserQuestion**, then **Edit**:
-   - `RESTORE_TO` → set `statusLine.command` back to the printed original.
-   - `RESTORE_REMOVE` → remove the wrapper (delete the `statusLine` block, or restore whatever the user prefers).
-3. Optionally remind: thresholds in the state file remain; uninstalling the plugin removes the hook. See README for full uninstall.
+1. `guard.sh uninstall` → prints `RESTORE_TO` + original, or `RESTORE_REMOVE`.
+2. Resolve the settings file the same way as install step 1 (follow a symlink to its real path).
+3. Confirm with **AskUserQuestion**, then **Edit** the resolved file: `RESTORE_TO` → set command back; `RESTORE_REMOVE` → remove the wrapper.
 
 ## Notes
 
-- **Fail-open**: if there's no snapshot yet, it's stale (>30 min, override `LIMIT_USAGE_STALE_SECONDS`), or the window has no threshold, the guard allows tools through. It only blocks on a confirmed breach.
-- `rate_limits` only appears for Claude.ai subscriptions (Pro/Max/Team/Enterprise) and only after the first API response of a session. Free tier never triggers the guard.
+- Fail-open: no/stale snapshot (>5 min, override `LIMIT_USAGE_STALE_SECONDS`) or no threshold → tools run. Blocks only on a confirmed breach.
+- `rate_limits` needs a Claude.ai subscription and the first API response of a session; free tier never triggers.
