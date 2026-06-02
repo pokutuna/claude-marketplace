@@ -1,6 +1,7 @@
 ---
 name: things-app
 description: Create and update private personal todos in the Things 3 app. "things" などで起動。
+argument-hint: "today | inbox | create <title> [...] | update <id> [...] | complete <id>"
 metadata:
   author: pokutuna
   compatibility: macOS with Things 3 installed
