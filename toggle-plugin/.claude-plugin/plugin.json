@@ -1,7 +1,7 @@
 {
   "name": "toggle-plugin",
   "description": "Toggle Claude Code plugins enabled/disabled per project via .claude/settings.json",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "pokutuna"
   },

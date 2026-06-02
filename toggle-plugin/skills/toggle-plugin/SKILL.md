@@ -2,6 +2,7 @@
 name: toggle-plugin
 description: >-
   Toggle Claude Code plugins enabled/disabled per project.
+argument-hint: "list | enable <plugin> | disable <plugin> [--local]"
 model_invocation: false
 metadata:
   author: pokutuna
