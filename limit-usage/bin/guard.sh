@@ -187,7 +187,7 @@ status() {
     local orig
     orig="$(cfg_get "global.orig-statusline")"
     if [[ -z "$orig" ]]; then
-        echo "statusLine wrapper: not installed (run /limit-usage install)"
+        echo "statusLine wrapper: not installed (run /limit-usage-setup install)"
     elif [[ "$orig" == "$NO_ORIG" ]]; then
         echo "statusLine wrapper: installed (no original to restore)"
     else

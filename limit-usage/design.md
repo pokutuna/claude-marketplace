@@ -65,7 +65,7 @@ wrapper を settings.json の `statusLine.command` に書くとき、**どのパ
 
 - `CLAUDE_PLUGIN_DATA` = `~/.claude/plugins/data/<plugin-id>/`(`@`→`-`、例 `limit-usage-pokutuna-plugins`)。アンインストールまで永続
 - `guard.sh install` が `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` に wrapper をコピーし、`statusLine.command` にはそのパスを焼く。cache パスでないのでバージョン更新で壊れない
-- **SessionStart 等での自動再コピーはしない**(wrapper の中身はほぼ変わらない。素朴さ優先で hook を増やさない)。plugin 更新で wrapper を変えたときだけ `/limit-usage install` を再実行すれば最新がコピーし直される — README に明記
+- **SessionStart 等での自動再コピーはしない**(wrapper の中身はほぼ変わらない。素朴さ優先で hook を増やさない)。plugin 更新で wrapper を変えたときだけ `/limit-usage-setup install` を再実行すれば最新がコピーし直される — README に明記
 - env 伝播は層ごとに非対称(plugin-level hook = ROOT+DATA 両方 / skill frontmatter hook = ROOT のみ / Bash tool subprocess = どちらも無し)。install を処理する skill が `CLAUDE_PLUGIN_DATA` / `CLAUDE_PLUGIN_ROOT` を知るには **skill body の `${...}` 事前置換に頼る**(本体が置換。Bash tool subprocess の env には来ないので、skill body で env prefix として明示的に渡す)
 
 ### 値の形式・単位(`~/.claude/statusline.ts` の実装で確認)
@@ -100,7 +100,7 @@ rate_limits?: {
 ## アーキテクチャ
 
 ```
-[skill] /limit-usage install ── wrapper を ${CLAUDE_PLUGIN_DATA}/ にコピー(安定パス確保・1回)
+[skill] /limit-usage-setup install ── wrapper を ${CLAUDE_PLUGIN_DATA}/ にコピー(安定パス確保・1回)
                                                     │
 [Claude Code] --rate_limits(応答ヘッダ由来)--> statusLine stdin JSON
                                                     │
@@ -112,7 +112,8 @@ rate_limits?: {
                                                     │
 [PreToolUse] guard.sh check ── 閾値(gitconfig)と比較 ── 超過なら deny
                                                     │
-[skill] /limit-usage ── 閾値設定 / install(wrapper差し替えを対話的に案内) / uninstall
+[skill] /limit-usage ── 閾値設定(set / off / status)
+[skill] /limit-usage-setup ── install(wrapper差し替えを対話的に案内) / uninstall
 ```
 
 ## ディレクトリ構成
@@ -125,7 +126,9 @@ limit-usage/
 │   ├── statusline-wrapper.sh           # stdin tee → 元コマンドへ pass-through
 │   └── guard.sh                        # check / set / off / status / install / uninstall
 │                                       # install が wrapper を CLAUDE_PLUGIN_DATA にコピー
-├── skills/limit-usage/SKILL.md
+├── skills/
+│   ├── limit-usage/SKILL.md            # set / off / status(settings.json に触らない・Edit 権限なし)
+│   └── limit-usage-setup/SKILL.md      # install / uninstall(settings.json を編集・Edit 権限あり)
 ├── design.md                           # このファイル
 └── README.md
 ```
@@ -180,12 +183,12 @@ limit-usage/
 - 読み出しは常に `session.<id>` → `global` の順でフォールバック
 - 5h / 7d は独立した2キー(片方だけ設定も可)
 
-### 3. install の受け入れやすさ(skill で案内)
+### 3. install の受け入れやすさ(limit-usage-setup skill で案内)
 
-原則: **勝手に settings.json を書き換えない**。skill が「提案 → 差分提示 → 同意 → 適用」。
+原則: **勝手に settings.json を書き換えない**。skill が「提案 → 差分提示 → 同意 → 適用」。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/off/status)からは `Edit` 権限を外して最小権限にしている。
 
-`/limit-usage install` の流れ:
-1. settings.json を解決(`~/.claude/settings.json` 等)。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
+`/limit-usage-setup install` の流れ:
+1. settings.json を**決め打ちせず解決する**。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`(`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置は動かさないので、コンテキストの CLAUDE.md パスから設定ディレクトリを推測しない — 環境変数を直接見る)。`statusLine` がプロジェクト `.claude/settings.json` 側にあることもあるので、実際に `statusLine` を定義しているファイルを選ぶ。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
 2. 現 `statusLine.command` を読む
 3. `guard.sh install` が wrapper を `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` にコピーし、before/after 差分を提示。**焼き込むのは `CLAUDE_PLUGIN_DATA` の安定パス**(バージョン非依存):
    ```
@@ -197,11 +200,13 @@ limit-usage/
 5. statusLine 未設定のユーザーには元コマンド無しで wrapper を噛ませる(表示は空のまま・計測のみ)
 6. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
 7. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
-8. **更新**: plugin 更新で wrapper の中身を変えたら `/limit-usage install` を再実行(安定パスは不変、コピーを上書きするだけ)
+8. **更新**: plugin 更新で wrapper の中身を変えたら `/limit-usage-setup install` を再実行(安定パスは不変、コピーを上書きするだけ)
 
-### 4. SKILL.md
+### 4. SKILL.md(2つに分割)
 
-`/limit-usage` の操作集約: `install` / `set 5h 80%`(`--global`)/ `off` / `status` / `uninstall`。frontmatter `argument-hint` で引数ヒントを表示
+- **`limit-usage`**(日常): `set 5h 80%`(`--global`)/ `off` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。未 install なら `/limit-usage-setup install` を案内
+- **`limit-usage-setup`**(セットアップ): `install` / `uninstall`。`settings.json` を編集するため `allowed-tools` に `Edit(~/.claude/settings.json)` / `Edit(.claude/settings.json)` と、wrapper コピー先の `CLAUDE_PLUGIN_DATA` を渡す Bash を持つ
+- どちらも frontmatter `argument-hint` で引数ヒントを表示
 
 ## 設計上の注意点
 

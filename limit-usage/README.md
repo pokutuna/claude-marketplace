@@ -21,10 +21,10 @@ When a rate-limit window (5-hour or 7-day) passes a usage threshold you set, thi
 The guard can only see usage after your statusLine is wrapped to capture it.
 
 ```
-/limit-usage install
+/limit-usage-setup install
 ```
 
-The skill reads your `settings.json`, shows a before/after diff, and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged; the original command is saved for restore.
+The setup skill reads your `settings.json`, shows a before/after diff, and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged; the original command is saved for restore. (Install/uninstall live in `limit-usage-setup` — the separate skill that touches `settings.json` — so the everyday `limit-usage` commands need no edit permission.)
 
 ### Set thresholds
 
@@ -53,7 +53,7 @@ The number is **used_percentage** (0–100): `80` means "80% used / 20% left".
 ### Restore your statusLine
 
 ```
-/limit-usage uninstall
+/limit-usage-setup uninstall
 ```
 
 ## Requirements
@@ -70,9 +70,9 @@ claude plugin install limit-usage@pokutuna-plugins --scope user
 
 > **Note:** We recommend installing with `--scope user` (default). See [Recommendation](https://github.com/pokutuna/claude-plugins#recommendation) for details.
 
-After installing, run `/limit-usage install` once, then set your thresholds.
+After installing, run `/limit-usage-setup install` once, then set your thresholds with `/limit-usage set`.
 
-> **After a plugin update:** re-run `/limit-usage install` to refresh the wrapper copy in the data dir. The baked statusLine path doesn't change, so no `settings.json` edit is needed — it just re-copies the latest wrapper.
+> **After a plugin update:** re-run `/limit-usage-setup install` to refresh the wrapper copy in the data dir. The baked statusLine path doesn't change, so no `settings.json` edit is needed — it just re-copies the latest wrapper.
 
 ## How it works
 
@@ -103,6 +103,6 @@ Snapshots older than 5 minutes are treated as stale (fail-open). Override with `
 
 ## Uninstall
 
-1. `/limit-usage uninstall` to restore your statusLine.
+1. `/limit-usage-setup uninstall` to restore your statusLine.
 2. `claude plugin uninstall limit-usage@pokutuna-plugins` to remove the hook.
 3. Optionally remove the state files listed above.
