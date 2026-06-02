@@ -109,6 +109,12 @@
       "description": "Round-trip code review with difit. Loads AI-authored line comments at launch and exchanges replies with the human over difit's HTTP API while the server keeps running.",
       "source": "./difit",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/difit"
+    },
+    {
+      "name": "limit-usage",
+      "description": "Stop tool execution before you exhaust your Claude rate limit. Reads usage from statusLine at zero metering cost and denies tool calls once a window passes your threshold.",
+      "source": "./limit-usage",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/limit-usage"
     }
   ]
 }
