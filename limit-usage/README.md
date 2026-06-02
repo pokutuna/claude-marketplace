@@ -4,105 +4,56 @@ Stop tool execution before you exhaust your Claude rate limit.
 
 ## Overview
 
-When a rate-limit window (5-hour or 7-day) passes a usage threshold you set, this plugin **denies further tool calls** so you don't burn through your remaining quota. Usage is read from the data Claude Code already feeds your `statusLine` — so measuring it costs **zero extra quota** (no `claude -p`, no OAuth token, no API calls).
+Set a usage threshold for a rate-limit window (5-hour or 7-day), and once that window passes it, the plugin **denies further tool calls** so you don't burn through your remaining quota. Usage is read from the data Claude Code already feeds your `statusLine`, so measuring it costs **zero extra quota** — no `claude -p`, no OAuth token, no API calls. It fails open: with no usage data or no threshold, tools run normally.
 
-## Features
+Requires `jq` and a Claude.ai subscription (Pro / Max / Team / Enterprise) — `rate_limits` only appears for subscriptions, after the session's first API response.
 
-- **Zero metering cost**: usage % is captured from the normal statusLine stream, not by spending quota to ask.
-- **Per-window thresholds**: independently limit the 5-hour and 7-day windows.
-- **Session or global scope**: set a limit for the current session or for all sessions (`--global`).
-- **Non-destructive install**: wraps your existing statusLine command, preserving its display; one-command `uninstall` restores it.
-- **Fail-open**: no usage data, stale data, or no threshold → tools run normally. It only blocks on a confirmed breach.
-
-## Usage
-
-### One-time install (required)
-
-The guard can only see usage after your statusLine is wrapped to capture it.
-
-```
-/limit-usage-setup install
-```
-
-The setup skill reads your `settings.json`, shows a before/after diff, and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged; the original command is saved for restore. (Install/uninstall live in `limit-usage-setup` — the separate skill that touches `settings.json` — so the everyday `limit-usage` commands need no edit permission.)
-
-### Set thresholds
-
-```
-/limit-usage set 5h 80%        # stop when the 5-hour window is 80% used (this session)
-/limit-usage set 7d 90%        # stop when the 7-day window is 90% used (this session)
-/limit-usage set 5h 80% --global   # apply to all sessions
-```
-
-The number is **used_percentage** (0–100): `80` means "80% used / 20% left".
-
-### Clear thresholds
-
-```
-/limit-usage off         # clear both windows (this session)
-/limit-usage off 5h      # clear only the 5h window
-/limit-usage off --global
-```
-
-### Check status
-
-```
-/limit-usage status      # effective thresholds + current usage + snapshot age
-```
-
-### Restore your statusLine
-
-```
-/limit-usage-setup uninstall
-```
-
-## Requirements
-
-- `jq` on PATH.
-- A Claude.ai subscription (Pro / Max / Team / Enterprise). The `rate_limits` data only appears for subscriptions, and only after the first API response of a session — free tier never triggers the guard.
-
-## Installation
+## Install
 
 ```bash
 claude plugin marketplace add pokutuna/claude-plugins
 claude plugin install limit-usage@pokutuna-plugins --scope user
 ```
 
-> **Note:** We recommend installing with `--scope user` (default). See [Recommendation](https://github.com/pokutuna/claude-plugins#recommendation) for details.
+> **Note:** We recommend `--scope user` (default). See [Recommendation](https://github.com/pokutuna/claude-plugins#recommendation).
 
-After installing, run `/limit-usage-setup install` once, then set your thresholds with `/limit-usage set`.
+## Usage
 
-> **After a plugin update:** re-run `/limit-usage-setup install` to refresh the wrapper copy in the data dir. The baked statusLine path doesn't change, so no `settings.json` edit is needed — it just re-copies the latest wrapper.
+**First, run the one-time setup** — the guard can only see usage after your statusLine is wrapped to capture it:
+
+```
+/limit-usage-setup install
+```
+
+This shows a before/after diff and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged. (Setup is a separate skill so the everyday `/limit-usage` commands need no edit permission.) Re-run it after a plugin update to refresh the wrapper.
+
+Then set thresholds and check status:
+
+```
+/limit-usage set 5h 80%        # stop when the 5h window is 80% used (this session)
+/limit-usage set 7d 90% --global   # apply to all sessions
+/limit-usage off [5h|7d]       # clear a threshold (or both)
+/limit-usage status            # thresholds + current usage
+```
+
+The number is **used_percentage** (0–100): `80` means "80% used / 20% left". Run `/limit-usage-setup uninstall` to restore your original statusLine.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    CC[Claude Code] -->|"rate_limits (from API headers)"| SL[statusLine stdin]
-    SL --> W["statusline-wrapper.sh<br>(tee → state file)"]
-    W -->|pass-through| ORIG[your original statusLine]
-    W --> RF[("rate state file")]
-    RF -.->|read| G{{"PreToolUse: guard.sh check<br>used% ≥ threshold?"}}
+    CC[Claude Code] -->|"rate_limits"| W["statusline-wrapper.sh"]
+    W -->|pass-through| ORIG[your statusLine]
+    W --> RF[("usage snapshot")]
+    RF -.->|read| G{{"PreToolUse: guard.sh<br>used% ≥ threshold?"}}
+    CONF[("thresholds")] -.->|read| G
     G -- Yes --> DENY[Deny tool call]
     G -- No / no data --> ALLOW[Allow]
-    CONF[("thresholds<br>(git-config)")] -.->|read| G
 ```
 
-1. Claude Code passes a JSON blob (including `rate_limits`) to the statusLine command on stdin. This is the only hook surface that receives it.
-2. `install` copies `statusline-wrapper.sh` into the plugin's data dir (a version-stable path — statusLine can't expand `${CLAUDE_PLUGIN_ROOT}`, and the plugin cache path is versioned) and wraps your statusLine with that copy, which tees the usage % into a state file and replays stdin to your original command unchanged.
-3. A `PreToolUse` hook runs `guard.sh check` before every tool call. It compares the captured usage against your thresholds (resolving session → global) and emits a `deny` decision when a window is at or over its limit.
-4. If there's no snapshot, the snapshot is stale, or no threshold is set, the guard stays silent and the tool runs.
+1. Claude Code feeds `rate_limits` (from API headers) to the `statusLine` command on stdin — the only hook surface that receives it.
+2. `/limit-usage-setup install` wraps your statusLine with `statusline-wrapper.sh`, which tees the usage % into a state file and replays stdin to your original command unchanged.
+3. A `PreToolUse` hook runs `guard.sh` before each tool call, compares the captured usage against your thresholds (session → global), and denies once a window is at or over its limit.
+4. No snapshot, a stale snapshot (>5 min, override `LIMIT_USAGE_STALE_SECONDS`), or no threshold → the guard stays silent and the tool runs.
 
-## State files
-
-- `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json` — latest usage snapshot (written by the wrapper).
-- `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf` — thresholds + saved original statusLine, git-config format.
-- `~/.claude/plugins/data/limit-usage-pokutuna-plugins/statusline-wrapper.sh` — the wrapper copy `install` bakes into your statusLine (`uninstall` removes it).
-
-Snapshots older than 5 minutes are treated as stale (fail-open). Override with `LIMIT_USAGE_STALE_SECONDS`.
-
-## Uninstall
-
-1. `/limit-usage-setup uninstall` to restore your statusLine.
-2. `claude plugin uninstall limit-usage@pokutuna-plugins` to remove the hook.
-3. Optionally remove the state files listed above.
+State lives in `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-*` (usage snapshot + git-config thresholds). To remove the plugin entirely: `/limit-usage-setup uninstall`, then `claude plugin uninstall limit-usage@pokutuna-plugins`.

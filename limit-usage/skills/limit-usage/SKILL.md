@@ -31,7 +31,7 @@ Run guard.sh with the session id (per-session thresholds need it):
 
 The number is `used_percentage` (0–100): `set 5h 80` stops once the 5h window is 80% used.
 
-After `set`, also run `status`; if the wrapper is not installed, tell the user to run `/limit-usage-setup install` (a threshold does nothing without it).
+State the result of the command you ran, briefly — a one-line confirmation for `set`/`off`, or the `status` output for `status`. Add a pointer to `/limit-usage-setup install` only when the wrapper is not installed (a threshold does nothing without it).
 
 ## Notes
 

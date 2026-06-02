@@ -68,6 +68,15 @@ wrapper を settings.json の `statusLine.command` に書くとき、**どのパ
 - **SessionStart 等での自動再コピーはしない**(wrapper の中身はほぼ変わらない。素朴さ優先で hook を増やさない)。plugin 更新で wrapper を変えたときだけ `/limit-usage-setup install` を再実行すれば最新がコピーし直される — README に明記
 - env 伝播は層ごとに非対称(plugin-level hook = ROOT+DATA 両方 / skill frontmatter hook = ROOT のみ / Bash tool subprocess = どちらも無し)。install を処理する skill が `CLAUDE_PLUGIN_DATA` / `CLAUDE_PLUGIN_ROOT` を知るには **skill body の `${...}` 事前置換に頼る**(本体が置換。Bash tool subprocess の env には来ないので、skill body で env prefix として明示的に渡す)
 
+### 編集対象 settings.json の特定 — Bash の env を信用しない(実機検証で確定)
+
+install が書き換える settings.json をどう特定するか。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`。ここに2つの落とし穴がある(クリーン環境テストで実際に踏んだ):
+
+- **`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置を動かさない**。`CLAUDE_CONFIG_DIR=/tmp/cc-clean` で起動しても CLAUDE.md は `~/.claude/CLAUDE.md` から読まれる(memory ディレクトリは `$CLAUDE_CONFIG_DIR` 側を指すのに非対称)。→ **コンテキストに出る CLAUDE.md のパスから設定ディレクトリを推測してはいけない**
+- **Bash tool subprocess の `$CLAUDE_CONFIG_DIR` は profile に汚染される**。非対話シェルが `.zshenv` 等を読み直すため、profile に `export CLAUDE_CONFIG_DIR=~/.claude` があると、`CLAUDE_CONFIG_DIR=/tmp/cc-clean claude` で起動しても **Bash サブプロセス内では本番値に上書きされる**。skill が Bash で `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` を評価すると本番 settings を掴み、クリーン環境テストのつもりで本番 dotfiles を編集しかける(= `CLAUDE_PLUGIN_DATA` で踏んだのと同じ「Bash subprocess の env は信用できない」問題)
+
+**判断: 深追いしない(現状の歯止めで十分)。** 実害が出るのは「profile で `CLAUDE_CONFIG_DIR` を export しつつ別 config dir で起動して install する」というテスト特有の状況のみで、通常利用では起きない。万一誤ったファイルを掴んでも、install は (1) `statusLine` を実際に定義しているファイルを選ぶ、(2) symlink は `realpath` で実体解決、(3) 編集前に AskUserQuestion で対象パスを提示して同意を取る、の三重の歯止めでユーザーが気づいて止められる(実際テストで「`~/.claude/settings.json` は dotfiles symlink」を見て止められた)。`${CLAUDE_CONFIG_DIR}` を skill body の `${...}` 置換で渡せれば根治しうるが、展開される保証は未確認で、コストに見合わないと判断
+
 ### 値の形式・単位(`~/.claude/statusline.ts` の実装で確認)
 
 ```ts
@@ -204,7 +213,7 @@ limit-usage/
 
 ### 4. SKILL.md(2つに分割)
 
-- **`limit-usage`**(日常): `set 5h 80%`(`--global`)/ `off` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。未 install なら `/limit-usage-setup install` を案内
+- **`limit-usage`**(日常): `set 5h 80%`(`--global`)/ `off` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。未 install なら `/limit-usage-setup install` を案内。**出力は実行コマンドの結果を簡潔に述べるだけ**(set/off は 1 行確認、status は status 出力。現在値の長い内訳や他設定の案内・フォロー質問を並べない)
 - **`limit-usage-setup`**(セットアップ): `install` / `uninstall`。`settings.json` を編集するため `allowed-tools` に `Edit(~/.claude/settings.json)` / `Edit(.claude/settings.json)` と、wrapper コピー先の `CLAUDE_PLUGIN_DATA` を渡す Bash を持つ
 - どちらも frontmatter `argument-hint` で引数ヒントを表示
 
@@ -218,6 +227,7 @@ limit-usage/
 - **自己デッドロック回避**: guard 発動中も `set`/`off`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
 - **statusLine に焼くパス**: `${CLAUDE_PLUGIN_ROOT}` は statusLine で展開されず、cache パスはバージョン更新で壊れる。install が `CLAUDE_PLUGIN_DATA` の安定パスに wrapper を 1 回コピーし、それを焼く。詳細は「statusLine.command に焼くパスの問題と解決」節
 - **settings.json の symlink**: dotfiles を symlink で管理しているユーザーでは、Edit が symlink を実ファイルに置換して連携を壊す。install/uninstall は `realpath` で実体を解決してから編集する(実機テストで発覚)
+- **編集対象 settings.json の特定**: `~/.claude/settings.json` を決め打ちせず `CLAUDE_CONFIG_DIR` を考慮する。ただし Bash subprocess の `$CLAUDE_CONFIG_DIR` は profile に汚染されうるので過信しない。実害は限定的で深追いしない判断。詳細は「編集対象 settings.json の特定 — Bash の env を信用しない」節
 
 ## 参考にする既存プラグイン
 
