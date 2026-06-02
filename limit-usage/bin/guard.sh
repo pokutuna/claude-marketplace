@@ -200,14 +200,26 @@ status() {
 
 install() {
     local orig="${1:-}"
-    local wrapper="${CLAUDE_PLUGIN_ROOT:-}/bin/statusline-wrapper.sh"
-    mkdir -p "$STATE_DIR"
 
     if [[ "$orig" == *"statusline-wrapper.sh"* ]]; then
         echo "ALREADY_WRAPPED"
         echo "current: $orig"
         return
     fi
+
+    # statusLine can't expand ${CLAUDE_PLUGIN_ROOT}, and the cache path is
+    # versioned (breaks on update). Copy the wrapper into CLAUDE_PLUGIN_DATA —
+    # a version-stable dir — and bake that path. Re-run install after an update
+    # to refresh the copy.
+    local src="${CLAUDE_PLUGIN_ROOT:-}/bin/statusline-wrapper.sh"
+    if [[ -z "${CLAUDE_PLUGIN_DATA:-}" || ! -f "$src" ]]; then
+        echo "ERROR: CLAUDE_PLUGIN_DATA unset or wrapper not found at ${src}" >&2
+        exit 1
+    fi
+    local wrapper="$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh"
+    mkdir -p "$CLAUDE_PLUGIN_DATA" "$STATE_DIR"
+    cp "$src" "$wrapper"
+    chmod +x "$wrapper"
 
     if [[ -n "$orig" ]]; then
         git config -f "$CONFIG_FILE" "global.orig-statusline" "$orig"
@@ -225,6 +237,7 @@ uninstall() {
     local orig
     orig="$(cfg_get "global.orig-statusline")"
     git config -f "$CONFIG_FILE" --unset "global.orig-statusline" 2>/dev/null || true
+    [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]] && rm -f "$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh"
     if [[ -z "$orig" || "$orig" == "$NO_ORIG" ]]; then
         echo "RESTORE_REMOVE"
         echo "(no original statusLine was saved; remove the wrapper command entirely)"

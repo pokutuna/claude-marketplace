@@ -52,6 +52,22 @@
 
 → 結論: **ユーザーの既存 statusLine を wrapper で包み、stdin を state file に tee する**以外に、追加コストなしで `rate_limits` を取る方法は存在しない。
 
+### statusLine.command に焼くパスの問題と解決(`CLAUDE_PLUGIN_DATA` + SessionStart)
+
+wrapper を settings.json の `statusLine.command` に書くとき、**どのパスを焼き込むか**が落とし穴。実機調査(クリーン環境 + 公式 docs)で確定した制約:
+
+- `${CLAUDE_PLUGIN_ROOT}` は **statusLine 実行コンテキストでは展開されない**。statusLine に渡る env は `COLUMNS` / `LINES` / `FORCE_HYPERLINK` のみで、`CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` は来ない(hook context とは別)
+- `${CLAUDE_PLUGIN_ROOT}` の実体は **バージョン入り cache パス** `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`。これを literal で焼くと **更新で壊れる**(旧バージョンは orphaned 後 7 日で削除)
+- cache に `latest` / `current` 等のバージョン非依存 symlink は**存在しない**
+- install/enable/update 時に発火する hook も**存在しない**(`Setup` は `--init-only` 専用で通常起動では発火せず使えない)
+
+採用: **install 時に wrapper を `CLAUDE_PLUGIN_DATA`(バージョン更新を生き延びる永続ディレクトリ)へ 1 回コピーし、その安定パスを statusLine に焼く。**
+
+- `CLAUDE_PLUGIN_DATA` = `~/.claude/plugins/data/<plugin-id>/`(`@`→`-`、例 `limit-usage-pokutuna-plugins`)。アンインストールまで永続
+- `guard.sh install` が `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` に wrapper をコピーし、`statusLine.command` にはそのパスを焼く。cache パスでないのでバージョン更新で壊れない
+- **SessionStart 等での自動再コピーはしない**(wrapper の中身はほぼ変わらない。素朴さ優先で hook を増やさない)。plugin 更新で wrapper を変えたときだけ `/limit-usage install` を再実行すれば最新がコピーし直される — README に明記
+- env 伝播は層ごとに非対称(plugin-level hook = ROOT+DATA 両方 / skill frontmatter hook = ROOT のみ / Bash tool subprocess = どちらも無し)。install を処理する skill が `CLAUDE_PLUGIN_DATA` / `CLAUDE_PLUGIN_ROOT` を知るには **skill body の `${...}` 事前置換に頼る**(本体が置換。Bash tool subprocess の env には来ないので、skill body で env prefix として明示的に渡す)
+
 ### 値の形式・単位(`~/.claude/statusline.ts` の実装で確認)
 
 ```ts
@@ -84,13 +100,15 @@ rate_limits?: {
 ## アーキテクチャ
 
 ```
+[skill] /limit-usage install ── wrapper を ${CLAUDE_PLUGIN_DATA}/ にコピー(安定パス確保・1回)
+                                                    │
 [Claude Code] --rate_limits(応答ヘッダ由来)--> statusLine stdin JSON
                                                     │
-   settings.json: statusLine.command = wrapper.sh '<元コマンド>'
+   settings.json: statusLine.command = ~/.claude/plugins/data/<id>/statusline-wrapper.sh '<元コマンド>'
                                                     │
         wrapper.sh: stdin を state file に保存 → 元 statusLine に stdin パススルー
                                                     │
-              ~/.local/state/cc-limit-usage-rate.json (five_hour%, seven_day%, resets, ts)
+              ~/.local/state/cc-limit-usage-rate.json ({rate_limits, ts})
                                                     │
 [PreToolUse] guard.sh check ── 閾値(gitconfig)と比較 ── 超過なら deny
                                                     │
@@ -106,6 +124,7 @@ limit-usage/
 ├── bin/
 │   ├── statusline-wrapper.sh           # stdin tee → 元コマンドへ pass-through
 │   └── guard.sh                        # check / set / off / status / install / uninstall
+│                                       # install が wrapper を CLAUDE_PLUGIN_DATA にコピー
 ├── skills/limit-usage/SKILL.md
 ├── design.md                           # このファイル
 └── README.md
@@ -119,8 +138,7 @@ limit-usage/
   - rate state file: `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json`
   - 例: `{"rate_limits":{"five_hour":{"used_percentage":42,"resets_at":1780417800},"seven_day":{...}},"ts":<epoch>}`
   - `rate_limits` 欠落時(無料枠・初回応答前)は書かない(直前の snapshot を残す)
-- 第1引数の元コマンドに stdin をそのままパススルーして実行。元コマンドが無ければ何も出力しない(元々空だった statusLine は空のまま)
-- 元コマンドが無い(ユーザーが statusLine 未設定)場合は簡易表示 `5h: 42%` を自前で出力
+- 第1引数の元コマンドに stdin をそのままパススルーして実行。元コマンドが無ければ何も出力しない(元々空だった statusLine は空のまま尊重。Claude Code に組み込みデフォルト statusLine は無いので、自前で行を出すのは余計な押し付けになる)
 
 ### 2. guard.sh + gitconfig state
 
@@ -167,17 +185,19 @@ limit-usage/
 原則: **勝手に settings.json を書き換えない**。skill が「提案 → 差分提示 → 同意 → 適用」。
 
 `/limit-usage install` の流れ:
-1. 現 `statusLine.command` を読む
-2. before/after 差分を提示:
+1. settings.json を解決(`~/.claude/settings.json` 等)。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
+2. 現 `statusLine.command` を読む
+3. `guard.sh install` が wrapper を `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` にコピーし、before/after 差分を提示。**焼き込むのは `CLAUDE_PLUGIN_DATA` の安定パス**(バージョン非依存):
    ```
    現在:   "command": "~/.claude/statusline.ts"
-   変更後: "command": ".../statusline-wrapper.sh '~/.claude/statusline.ts'"
+   変更後: "command": "~/.claude/plugins/data/<id>/statusline-wrapper.sh '~/.claude/statusline.ts'"
    （表示はそのまま。利用率を裏でファイルに記録します。元コマンドは退避し uninstall で復元可)
    ```
-3. 同意を得てから settings.json を編集(AskUserQuestion)
-4. statusLine 未設定のユーザーには「wrapper だけ入れますか?(簡易表示も出ます)」と案内
-5. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
-6. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
+4. 同意を得てから settings.json(実体)を編集(AskUserQuestion)。`type` / `padding` は保持
+5. statusLine 未設定のユーザーには元コマンド無しで wrapper を噛ませる(表示は空のまま・計測のみ)
+6. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
+7. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
+8. **更新**: plugin 更新で wrapper の中身を変えたら `/limit-usage install` を再実行(安定パスは不変、コピーを上書きするだけ)
 
 ### 4. SKILL.md
 
@@ -191,6 +211,8 @@ limit-usage/
 - **state file の鮮度**: statusLine は毎応答 + `refreshInterval` で更新。古すぎる ts なら素通り(安全側)
 - **閾値の意味**: `used_percentage` の上限(`set 5h 80%` = 5h 枠を 80% 使ったら止める)
 - **自己デッドロック回避**: guard 発動中も `set`/`off`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
+- **statusLine に焼くパス**: `${CLAUDE_PLUGIN_ROOT}` は statusLine で展開されず、cache パスはバージョン更新で壊れる。install が `CLAUDE_PLUGIN_DATA` の安定パスに wrapper を 1 回コピーし、それを焼く。詳細は「statusLine.command に焼くパスの問題と解決」節
+- **settings.json の symlink**: dotfiles を symlink で管理しているユーザーでは、Edit が symlink を実ファイルに置換して連携を壊す。install/uninstall は `realpath` で実体を解決してから編集する(実機テストで発覚)
 
 ## 参考にする既存プラグイン
 

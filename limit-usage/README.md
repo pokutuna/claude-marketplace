@@ -72,6 +72,8 @@ claude plugin install limit-usage@pokutuna-plugins --scope user
 
 After installing, run `/limit-usage install` once, then set your thresholds.
 
+> **After a plugin update:** re-run `/limit-usage install` to refresh the wrapper copy in the data dir. The baked statusLine path doesn't change, so no `settings.json` edit is needed — it just re-copies the latest wrapper.
+
 ## How it works
 
 ```mermaid
@@ -87,7 +89,7 @@ flowchart LR
 ```
 
 1. Claude Code passes a JSON blob (including `rate_limits`) to the statusLine command on stdin. This is the only hook surface that receives it.
-2. `install` wraps your statusLine with `statusline-wrapper.sh`, which tees the usage % into a state file and replays stdin to your original command unchanged.
+2. `install` copies `statusline-wrapper.sh` into the plugin's data dir (a version-stable path — statusLine can't expand `${CLAUDE_PLUGIN_ROOT}`, and the plugin cache path is versioned) and wraps your statusLine with that copy, which tees the usage % into a state file and replays stdin to your original command unchanged.
 3. A `PreToolUse` hook runs `guard.sh check` before every tool call. It compares the captured usage against your thresholds (resolving session → global) and emits a `deny` decision when a window is at or over its limit.
 4. If there's no snapshot, the snapshot is stale, or no threshold is set, the guard stays silent and the tool runs.
 
@@ -95,6 +97,7 @@ flowchart LR
 
 - `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json` — latest usage snapshot (written by the wrapper).
 - `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf` — thresholds + saved original statusLine, git-config format.
+- `~/.claude/plugins/data/limit-usage-pokutuna-plugins/statusline-wrapper.sh` — the wrapper copy `install` bakes into your statusLine (`uninstall` removes it).
 
 Snapshots older than 5 minutes are treated as stale (fail-open). Override with `LIMIT_USAGE_STALE_SECONDS`.
 
