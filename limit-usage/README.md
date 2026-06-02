@@ -25,7 +25,7 @@ claude plugin install limit-usage@pokutuna-plugins --scope user
 /limit-usage-setup install
 ```
 
-This shows a before/after diff and edits `statusLine.command` **only after you confirm**. Your status line display is unchanged. (Setup is a separate skill so the everyday `/limit-usage` commands need no edit permission.) Re-run it after a plugin update to refresh the wrapper.
+It shows the before/after and edits `statusLine.command` (the edit goes through Claude Code's normal file-permission prompt). Your status line display is unchanged. (Setup is a separate skill so the everyday `/limit-usage` commands need no edit permission.) Re-run it after a plugin update to refresh the wrapper.
 
 Then set thresholds and check status:
 

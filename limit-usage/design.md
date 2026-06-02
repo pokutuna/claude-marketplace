@@ -194,7 +194,7 @@ limit-usage/
 
 ### 3. install の受け入れやすさ(limit-usage-setup skill で案内)
 
-原則: **勝手に settings.json を書き換えない**。skill が「提案 → 差分提示 → 同意 → 適用」。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/off/status)からは `Edit` 権限を外して最小権限にしている。
+原則: **勝手に settings.json を書き換えない**。skill が「変更内容(対象ファイル + before/after)を 1 行で提示 → Edit」。**同意点は Edit ツールのパーミッションプロンプト 1 つに集約**し、skill 側で別途 AskUserQuestion を重ねない(2 回 ask になって冗長。Edit が許可済みなら 0 回、未許可/禁止なら Edit プロンプトで 1 回 ask される)。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/off/status)からは `Edit` 権限を外して最小権限にしている。
 
 `/limit-usage-setup install` の流れ:
 1. settings.json を**決め打ちせず解決する**。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`(`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置は動かさないので、コンテキストの CLAUDE.md パスから設定ディレクトリを推測しない — 環境変数を直接見る)。`statusLine` がプロジェクト `.claude/settings.json` 側にあることもあるので、実際に `statusLine` を定義しているファイルを選ぶ。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
@@ -205,7 +205,7 @@ limit-usage/
    変更後: "command": "~/.claude/plugins/data/<id>/statusline-wrapper.sh '~/.claude/statusline.ts'"
    （表示はそのまま。利用率を裏でファイルに記録します。元コマンドは退避し uninstall で復元可)
    ```
-4. 同意を得てから settings.json(実体)を編集(AskUserQuestion)。`type` / `padding` は保持
+4. 変更内容を 1 行提示してから settings.json(実体)を Edit(AskUserQuestion は挟まない。Edit プロンプトが同意点)。`type` / `padding` は保持
 5. statusLine 未設定のユーザーには元コマンド無しで wrapper を噛ませる(表示は空のまま・計測のみ)
 6. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
 7. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
