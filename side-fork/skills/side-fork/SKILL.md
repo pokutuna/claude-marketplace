@@ -8,7 +8,7 @@ metadata:
 ---
 # side-fork
 
-Fork the current session into a new terminal window. Unlike the built-in `/fork` (which replaces the current terminal with the fork), this keeps the current terminal as the original session and opens the fork in a new window.
+Fork the current session into a new terminal window. Unlike the built-in `/branch` (which replaces the current terminal with the fork), this keeps the current terminal as the original session and opens the fork in a new window.
 
 ## Instructions
 

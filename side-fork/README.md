@@ -9,7 +9,7 @@ Type `/side-fork` in a Claude Code session running inside tmux or screen:
 - **This terminal** continues as the original session (main line)
 - **New window** opens with the forked session
 
-Unlike the built-in `/fork` (which replaces the current terminal with the fork), `side-fork` keeps this terminal as the original and opens the fork in a new window.
+Unlike the built-in `/branch` (formerly `/fork`, which replaces the current terminal with the fork), `side-fork` keeps this terminal as the original and opens the fork in a new window.
 
 ## Requirements
 
