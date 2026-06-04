@@ -121,7 +121,7 @@ rate_limits?: {
                                                     │
 [PreToolUse] guard.sh check ── 閾値(gitconfig)と比較 ── 超過なら deny
                                                     │
-[skill] /limit-usage ── 閾値設定(set / off / status)
+[skill] /limit-usage ── 閾値設定(set / clear / status)
 [skill] /limit-usage-setup ── install(wrapper差し替えを対話的に案内) / uninstall
 ```
 
@@ -133,10 +133,10 @@ limit-usage/
 ├── hooks/hooks.json                    # PreToolUse(全ツール) → guard.sh check
 ├── bin/
 │   ├── statusline-wrapper.sh           # stdin tee → 元コマンドへ pass-through
-│   └── guard.sh                        # check / set / off / status / install / uninstall
+│   └── guard.sh                        # check / set / clear / status / install / uninstall
 │                                       # install が wrapper を CLAUDE_PLUGIN_DATA にコピー
 ├── skills/
-│   ├── limit-usage/SKILL.md            # set / off / status(settings.json に触らない・Edit 権限なし)
+│   ├── limit-usage/SKILL.md            # set / clear / status(settings.json に触らない・Edit 権限なし)
 │   └── limit-usage-setup/SKILL.md      # install / uninstall(settings.json を編集・Edit 権限あり)
 ├── design.md                           # このファイル
 └── README.md
@@ -180,9 +180,9 @@ limit-usage/
    "permissionDecisionReason":"5h usage 82% ≥ limit 80%. Resets at 14:30."}}
   ```
   - **fail-open**: 閾値未設定 / rate state file 無し / `rate_limits` 欠落 / ts が古すぎる → `exit 0`(素通り)
-  - **自己デッドロック回避(重要)**: `tool_input.command` に `guard.sh` を含む呼び出しは閾値に関わらず常に素通り。guard 発動中もプラグイン自身の管理コマンド(`set` / `off` / `status` / `uninstall`)は同じ Bash ツール経由なので、これを通さないと「閾値を下げて止めたのに下げ直す手段まで道連れ」でセッションが詰む。SKILL.md は guard.sh をフルパスで呼ぶため確実にマッチする(副作用: 文字列 `guard.sh` を含む任意コマンドも通るが、脱出ハッチがわずかに広いだけで実害なしと判断)
-- **`set 5h 80%` / `set 7d 90%`**: 閾値を session(既定)or `--global` で global に書く
-- **`off`**: セッション(or `--global`)の閾値を削除
+  - **自己デッドロック回避(重要)**: `tool_input.command` に `guard.sh` を含む呼び出しは閾値に関わらず常に素通り。guard 発動中もプラグイン自身の管理コマンド(`set` / `clear` / `status` / `uninstall`)は同じ Bash ツール経由なので、これを通さないと「閾値を下げて止めたのに下げ直す手段まで道連れ」でセッションが詰む。SKILL.md は guard.sh をフルパスで呼ぶため確実にマッチする(副作用: 文字列 `guard.sh` を含む任意コマンドも通るが、脱出ハッチがわずかに広いだけで実害なしと判断)
+- **`set 5h 80%` / `set 5h 80 7d 90`**: 閾値を session(既定)or `--global` で global に書く。複数ウィンドウを 1 回で指定可(全ペア検証 → まとめて書き込みで部分更新を防ぐ)
+- **`clear`**: 今このセッションで効いている閾値を全削除(session + global の両方)。スコープ指定は持たない。特定ウィンドウだけ残したい場合は `set` で上書きする
 - **`status`**: 現在の閾値設定 + rate state file の実残量を表示
 - **`install`**: settings.json の `statusLine.command` を wrapper に差し替え(対話的、下記)
 - **`uninstall`**: 退避した元コマンドに復元
@@ -194,7 +194,7 @@ limit-usage/
 
 ### 3. install の受け入れやすさ(limit-usage-setup skill で案内)
 
-原則: **勝手に settings.json を書き換えない**。skill が「変更内容(対象ファイル + before/after)を 1 行で提示 → Edit」。**同意点は Edit ツールのパーミッションプロンプト 1 つに集約**し、skill 側で別途 AskUserQuestion を重ねない(2 回 ask になって冗長。Edit が許可済みなら 0 回、未許可/禁止なら Edit プロンプトで 1 回 ask される)。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/off/status)からは `Edit` 権限を外して最小権限にしている。
+原則: **勝手に settings.json を書き換えない**。skill が「変更内容(対象ファイル + before/after)を 1 行で提示 → Edit」。**同意点は Edit ツールのパーミッションプロンプト 1 つに集約**し、skill 側で別途 AskUserQuestion を重ねない(2 回 ask になって冗長。Edit が許可済みなら 0 回、未許可/禁止なら Edit プロンプトで 1 回 ask される)。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/clear/status)からは `Edit` 権限を外して最小権限にしている。
 
 `/limit-usage-setup install` の流れ:
 1. settings.json を**決め打ちせず解決する**。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`(`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置は動かさないので、コンテキストの CLAUDE.md パスから設定ディレクトリを推測しない — 環境変数を直接見る)。`statusLine` がプロジェクト `.claude/settings.json` 側にあることもあるので、実際に `statusLine` を定義しているファイルを選ぶ。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
@@ -213,7 +213,7 @@ limit-usage/
 
 ### 4. SKILL.md(2つに分割)
 
-- **`limit-usage`**(日常): `set 5h 80%`(`--global`)/ `off` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。未 install なら `/limit-usage-setup install` を案内。**出力は実行コマンドの結果を簡潔に述べるだけ**(set/off は 1 行確認、status は status 出力。現在値の長い内訳や他設定の案内・フォロー質問を並べない)
+- **`limit-usage`**(日常): `5h=80 7d=90`(`--global`)/ `clear` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。ユーザーの自然な入力(`5h=80`・`set` 省略・複数ウィンドウ)を skill が正規形 `set 5h 80 7d 90` に変換して呼ぶ。未 install なら `/limit-usage-setup install` を案内。**出力は実行コマンドの結果を簡潔に述べるだけ**(set/clear は 1 行確認、status は status 出力。現在値の長い内訳や他設定の案内・フォロー質問を並べない)
 - **`limit-usage-setup`**(セットアップ): `install` / `uninstall`。`settings.json` を編集するため `allowed-tools` に `Edit(~/.claude/settings.json)` / `Edit(.claude/settings.json)` と、wrapper コピー先の `CLAUDE_PLUGIN_DATA` を渡す Bash を持つ
 - どちらも frontmatter `argument-hint` で引数ヒントを表示
 
@@ -224,7 +224,7 @@ limit-usage/
 - **無料枠 / 初回応答前**: `rate_limits` が来ない → fail-open(素通り、警告ログのみ)
 - **state file の鮮度**: statusLine は毎応答 + `refreshInterval` で更新。古すぎる ts なら素通り(安全側)
 - **閾値の意味**: `used_percentage` の上限(`set 5h 80%` = 5h 枠を 80% 使ったら止める)
-- **自己デッドロック回避**: guard 発動中も `set`/`off`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
+- **自己デッドロック回避**: guard 発動中も `set`/`clear`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
 - **statusLine に焼くパス**: `${CLAUDE_PLUGIN_ROOT}` は statusLine で展開されず、cache パスはバージョン更新で壊れる。install が `CLAUDE_PLUGIN_DATA` の安定パスに wrapper を 1 回コピーし、それを焼く。詳細は「statusLine.command に焼くパスの問題と解決」節
 - **settings.json の symlink**: dotfiles を symlink で管理しているユーザーでは、Edit が symlink を実ファイルに置換して連携を壊す。install/uninstall は `realpath` で実体を解決してから編集する(実機テストで発覚)
 - **編集対象 settings.json の特定**: `~/.claude/settings.json` を決め打ちせず `CLAUDE_CONFIG_DIR` を考慮する。ただし Bash subprocess の `$CLAUDE_CONFIG_DIR` は profile に汚染されうるので過信しない。実害は限定的で深追いしない判断。詳細は「編集対象 settings.json の特定 — Bash の env を信用しない」節

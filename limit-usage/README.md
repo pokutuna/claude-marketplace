@@ -33,7 +33,6 @@ Then set thresholds and check status:
 /limit-usage 5h=80             # stop when the 5h window is 80% used (this session)
 /limit-usage 5h=80 7d=90       # set both windows in one go
 /limit-usage 7d=90 --global    # apply to all sessions
-/limit-usage off [5h|7d]       # remove one window's threshold (or both) in one scope
 /limit-usage clear             # remove every threshold in effect now (this session + global)
 /limit-usage status            # thresholds + current usage
 ```

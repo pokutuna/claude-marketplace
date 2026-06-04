@@ -13,7 +13,6 @@
 #   guard.sh set 5h 80 [--global]     - Set 5h window usage limit (%)
 #   guard.sh set 7d 90 [--global]     - Set 7d window usage limit (%)
 #   guard.sh set 5h 80 7d 90 [--global] - Set multiple windows at once
-#   guard.sh off [5h|7d] [--global]   - Remove threshold(s) for this session (or --global)
 #   guard.sh clear                    - Remove every threshold in effect now (this session + global)
 #   guard.sh status                   - Show thresholds and current usage
 #   guard.sh install '<orig command>' - Print before/after for wrapping statusLine (skill applies it)
@@ -71,7 +70,7 @@ check() {
     export CLAUDE_SESSION_ID
 
     # Never block this plugin's own management commands. Otherwise tripping the
-    # guard would block set/off/status too — the commands needed to recover.
+    # guard would block set/clear/status too — the commands needed to recover.
     [[ "$cmd" == *"guard.sh"* ]] && exit 0
 
     local five seven five_reset seven_reset ts
@@ -104,7 +103,7 @@ deny() {
     jq -nc --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
 }
 
-# Where set/off write: --global, else this session, else global (so it still works).
+# Where set writes: --global, else this session, else global (so it still works).
 target_section() {
     if [[ "$1" == global ]]; then
         echo "global"
@@ -157,31 +156,6 @@ set_limit() {
         out+=("${wins[i]}=${pcts[i]}%")
     done
     echo "Set ${out[*]} (${scope})."
-}
-
-off_limit() {
-    local scope=session win=""
-    for a in "$@"; do
-        case "$a" in
-            --global) scope=global ;;
-            *) win="$a" ;;
-        esac
-    done
-
-    local section
-    section="$(target_section "$scope")"
-
-    if [[ -z "$win" ]]; then
-        git config -f "$CONFIG_FILE" --unset "${section}.five-hour" 2>/dev/null || true
-        git config -f "$CONFIG_FILE" --unset "${section}.seven-day" 2>/dev/null || true
-        echo "Cleared 5h and 7d limits (${scope})."
-        return
-    fi
-    local key
-    key="$(window_key "$win")"
-    [[ -z "$key" ]] && { echo "Error: window must be 5h or 7d (got '${win}')" >&2; exit 1; }
-    git config -f "$CONFIG_FILE" --unset "${section}.${key}" 2>/dev/null || true
-    echo "Cleared ${win} limit (${scope})."
 }
 
 # Remove every threshold that could be in effect for this session: whatever is
@@ -295,13 +269,12 @@ uninstall() {
 case "${1:-check}" in
     check)     check ;;
     set)       shift; set_limit "$@" ;;
-    off)       shift; off_limit "$@" ;;
     clear)     clear_limits ;;
     status)    status ;;
     install)   shift; install "$@" ;;
     uninstall) uninstall ;;
     *)
-        echo "Usage: $0 {check|set 5h|7d N [--global]|off [5h|7d] [--global]|clear|status|install <cmd>|uninstall}" >&2
+        echo "Usage: $0 {check|set 5h|7d N [--global]|clear|status|install <cmd>|uninstall}" >&2
         exit 1
         ;;
 esac
