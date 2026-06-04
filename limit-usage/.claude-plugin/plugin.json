@@ -1,7 +1,7 @@
 {
   "name": "limit-usage",
   "description": "Stop tool execution before you exhaust your Claude rate limit. Reads usage from statusLine at zero metering cost and denies tool calls once a window passes your threshold.",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "author": {
     "name": "pokutuna"
   },

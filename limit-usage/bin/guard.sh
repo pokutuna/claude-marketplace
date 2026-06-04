@@ -12,7 +12,9 @@
 #   guard.sh check                    - Hook mode: read JSON from stdin, deny if over threshold
 #   guard.sh set 5h 80 [--global]     - Set 5h window usage limit (%)
 #   guard.sh set 7d 90 [--global]     - Set 7d window usage limit (%)
+#   guard.sh set 5h 80 7d 90 [--global] - Set multiple windows at once
 #   guard.sh off [5h|7d] [--global]   - Remove threshold(s) for this session (or --global)
+#   guard.sh clear                    - Remove every threshold in effect now (this session + global)
 #   guard.sh status                   - Show thresholds and current usage
 #   guard.sh install '<orig command>' - Print before/after for wrapping statusLine (skill applies it)
 #   guard.sh uninstall                - Print the saved original statusLine command to restore
@@ -113,26 +115,48 @@ target_section() {
     fi
 }
 
+# Accepts one or more "<window> <percent>" pairs, e.g. `set 5h 80 7d 90`.
+# The skill normalizes friendlier input (5h=80, set omitted) into this form.
+# All pairs are validated before any is written, so a bad pair never leaves a
+# partial update.
 set_limit() {
-    local scope=session win="" pct=""
+    local scope=session
+    local args=()
     for a in "$@"; do
         case "$a" in
             --global) scope=global ;;
-            *) [[ -z "$win" ]] && win="$a" || pct="$a" ;;
+            *) args+=("$a") ;;
         esac
     done
 
-    local key
-    key="$(window_key "$win")"
-    [[ -z "$key" ]] && { echo "Error: window must be 5h or 7d (got '${win}')" >&2; exit 1; }
-    pct="${pct%\%}"
-    [[ "$pct" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "Error: percent must be a number (got '${pct}')" >&2; exit 1; }
+    (( ${#args[@]} >= 2 && ${#args[@]} % 2 == 0 )) || {
+        echo "Error: expected <window> <percent> pair(s), e.g. set 5h 80 7d 90 (got '${args[*]}')" >&2
+        exit 1
+    }
 
+    # First pass: validate every pair and collect resolved keys/values.
+    local keys=() pcts=() wins=()
+    local i win pct key
+    for (( i = 0; i < ${#args[@]}; i += 2 )); do
+        win="${args[i]}"
+        pct="${args[i+1]}"
+        key="$(window_key "$win")"
+        [[ -z "$key" ]] && { echo "Error: window must be 5h or 7d (got '${win}')" >&2; exit 1; }
+        pct="${pct%\%}"
+        [[ "$pct" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "Error: percent must be a number (got '${pct}')" >&2; exit 1; }
+        wins+=("$win"); keys+=("$key"); pcts+=("$pct")
+    done
+
+    # Second pass: write them all.
     local section
     section="$(target_section "$scope")"
     mkdir -p "$STATE_DIR"
-    git config -f "$CONFIG_FILE" "${section}.${key}" "$pct"
-    echo "Set ${win} limit to ${pct}% (${scope})."
+    local out=()
+    for (( i = 0; i < ${#keys[@]}; i++ )); do
+        git config -f "$CONFIG_FILE" "${section}.${keys[i]}" "${pcts[i]}"
+        out+=("${wins[i]}=${pcts[i]}%")
+    done
+    echo "Set ${out[*]} (${scope})."
 }
 
 off_limit() {
@@ -158,6 +182,27 @@ off_limit() {
     [[ -z "$key" ]] && { echo "Error: window must be 5h or 7d (got '${win}')" >&2; exit 1; }
     git config -f "$CONFIG_FILE" --unset "${section}.${key}" 2>/dev/null || true
     echo "Cleared ${win} limit (${scope})."
+}
+
+# Remove every threshold that could be in effect for this session: whatever is
+# set under this session's section AND whatever is set globally. Reports only
+# the keys that actually existed, so the user sees what was cleared.
+clear_limits() {
+    local cleared=()
+    local section key val
+    for section in ${CLAUDE_SESSION_ID:+"session.${CLAUDE_SESSION_ID}"} global; do
+        for key in five-hour seven-day; do
+            val="$(cfg_get "${section}.${key}")"
+            [[ -z "$val" ]] && continue
+            git config -f "$CONFIG_FILE" --unset "${section}.${key}" 2>/dev/null || true
+            cleared+=("${section}.${key}=${val}%")
+        done
+    done
+    if (( ${#cleared[@]} == 0 )); then
+        echo "No thresholds were set; nothing to clear."
+    else
+        echo "Cleared ${#cleared[@]} threshold(s): ${cleared[*]}"
+    fi
 }
 
 status() {
@@ -251,11 +296,12 @@ case "${1:-check}" in
     check)     check ;;
     set)       shift; set_limit "$@" ;;
     off)       shift; off_limit "$@" ;;
+    clear)     clear_limits ;;
     status)    status ;;
     install)   shift; install "$@" ;;
     uninstall) uninstall ;;
     *)
-        echo "Usage: $0 {check|set 5h|7d N [--global]|off [5h|7d] [--global]|status|install <cmd>|uninstall}" >&2
+        echo "Usage: $0 {check|set 5h|7d N [--global]|off [5h|7d] [--global]|clear|status|install <cmd>|uninstall}" >&2
         exit 1
         ;;
 esac
