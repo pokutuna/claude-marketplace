@@ -1,83 +1,83 @@
-# limit-usage — 設計メモ
+# limit-usage — design notes
 
-設定した使用率(rate limit utilization)に達したら、ツール実行を手前で止める Claude Code プラグイン。
+A Claude Code plugin that stops tool execution before you cross a usage threshold you set — either a rate-limit utilization percentage or a per-session cumulative cost (approximate USD, for plans with no usage quota).
 
-## 目的・要件
+## Goals / requirements
 
-- ユーザーが指定した使用量(例: 5h 枠を 80% 使ったら)で Claude の処理を止めたい
-- hook で実現する
-- **測定コストはゼロにする**(残量を測るために quota を消費しない)
-- ユーザーが既にカスタム statusLine を使っている前提で、それを壊さない
+- Stop Claude's work once the user-specified usage is reached (e.g. once 80% of the 5h window is used)
+- Implement it with a hook
+- **Zero metering cost** — never burn quota just to measure how much is left
+- Assume the user already runs a custom statusLine, and don't break it
 
-## 調査で確定した事実(なぜこの設計か)
+## Facts established by investigation (why this design)
 
-### quota / 利用状況の取得手段の比較
+### Comparing ways to obtain quota / usage state
 
-| 方式 | 測定コスト | 取れる情報 | 判定 |
+| Approach | Metering cost | Information available | Verdict |
 |---|---|---|---|
-| `GET /api/oauth/usage` 直叩き(`/usage` の実体) | ほぼゼロ | `utilization`% + `status` | ❌ OAuth トークン読み出しが必要。keychain のトークンは**失効していた**(実測 401)。`refreshOAuth: true` 相当のトークン更新を自前再実装する必要があり地雷 |
-| `claude -p --output-format json` の `rate_limit_event` | ❌ **毎回 quota 消費** | `status`(allowed/allowed_warning/rejected)+ resetsAt + overage | ❌ 残量を測るために新規セッションを起動して推論を走らせる=本末転倒。2026/6/15 以降は Agent SDK の別枠消費の懸念もある |
-| **statusLine stdin の `rate_limits`** | ⭕ **完全ゼロ**(本体の通常応答に相乗り) | `five_hour.used_percentage` / `seven_day.used_percentage`(0-100)+ `resets_at` | ✅ **採用**。追加リクエスト無し・トークン不要・リフレッシュ不要 |
+| Calling `GET /api/oauth/usage` directly (the real endpoint behind `/usage`) | ~zero | `utilization`% + `status` | ❌ Requires reading the OAuth token. The keychain token **was expired** (observed 401 in practice). You'd have to reimplement the `refreshOAuth: true`-style token refresh yourself — a minefield |
+| The `rate_limit_event` from `claude -p --output-format json` | ❌ **Burns quota every time** | `status` (allowed/allowed_warning/rejected) + resetsAt + overage | ❌ Spinning up a new session and running inference just to measure how much is left is self-defeating. After 2026/6/15 there's also the concern of separate Agent SDK quota consumption |
+| **`rate_limits` from statusLine stdin** | ⭕ **Truly zero** (rides on the normal response) | `five_hour.used_percentage` / `seven_day.used_percentage` (0–100) + `resets_at` | ✅ **Chosen.** No extra request, no token, no refresh |
 
-### `rate_limits` / `rate_limit_event` の中身(Claude Code バイナリ v2.1.160 解析)
+### What's inside `rate_limits` / `rate_limit_event` (from analyzing the Claude Code binary v2.1.160)
 
-本体は API 応答ヘッダ `anthropic-ratelimit-unified-*` をパース(関数 `s97()`)して利用状況を保持している。ヘッダ群:
+Internally, Claude Code parses the API response headers `anthropic-ratelimit-unified-*` (function `s97()`) and holds the usage state. The header group:
 
 - `anthropic-ratelimit-unified-status` — `allowed` / `allowed_warning` / `rejected`
-- `anthropic-ratelimit-unified-reset` — リセット epoch
+- `anthropic-ratelimit-unified-reset` — reset epoch
 - `anthropic-ratelimit-unified-fallback` — `available`
 - `anthropic-ratelimit-unified-overage-status` / `-overage-reset` / `-overage-disabled-reason`
 - `anthropic-ratelimit-unified-representative-claim` / `-upgrade-paths`
 
-`status` の意味(本体の警告出し分けロジックより):
+Meaning of `status` (from the binary's warning-display logic):
 
-- `allowed` — 正常、表示なし
-- `allowed_warning` — 上限が近い。`utilization >= 0.7`(70%以上)で warning 表示、70%未満は握りつぶし
-- `rejected` — 上限到達、error 表示
+- `allowed` — normal, no display
+- `allowed_warning` — near the limit. Warning is shown at `utilization >= 0.7` (70% or more); below 70% it's suppressed
+- `rejected` — limit hit, error display
 
 `rateLimitType` enum: `five_hour | seven_day | seven_day_opus | seven_day_sonnet | overage`
 
-`claude -p --output-format json` の実測サンプル:
+An observed sample of `claude -p --output-format json`:
 ```json
 {"type":"rate_limit_event","rate_limit_info":{"status":"allowed","resetsAt":1780417800,
  "rateLimitType":"five_hour","overageStatus":"rejected","overageDisabledReason":"out_of_credits","isUsingOverage":false}}
 ```
 
-### `rate_limits` を受け取れるのは statusLine だけ(重要な制約)
+### Only statusLine can receive `rate_limits` (a key constraint)
 
-- **プラグインは statusLine を提供できない**(`plugin.json` の settings は `agent` と `subagentStatusLine` のみ対応。メインの `statusLine` 不可)
-- **statusLine は単一・上書き式**。スコープ間でスタックされず、最も具体的なスコープが1個だけ勝つ
-- **`rate_limits` を受け取る hook は statusLine のみ**。SessionStart / PreToolUse / PostToolUse / Notification / Stop いずれにも来ない
-- `rate_limits` は **Claude.ai サブスク(Pro/Max/Team/Enterprise)のみ、セッション最初の API 応答以降**に出現。各 window は独立に欠落しうる
+- **A plugin cannot provide a statusLine.** The `settings` in `plugin.json` only support `agent` and `subagentStatusLine`; the main `statusLine` is not allowed
+- **statusLine is single and override-based.** It does not stack across scopes; exactly one wins — the most specific scope
+- **statusLine is the only hook that receives `rate_limits`.** It does not arrive in SessionStart / PreToolUse / PostToolUse / Notification / Stop
+- `rate_limits` only appears for **Claude.ai subscriptions (Pro/Max/Team/Enterprise), from the first API response of the session onward**. Each window can be independently absent
 
-→ 結論: **ユーザーの既存 statusLine を wrapper で包み、stdin を state file に tee する**以外に、追加コストなしで `rate_limits` を取る方法は存在しない。
+→ Conclusion: short of **wrapping the user's existing statusLine and teeing its stdin into a state file**, there is no way to get `rate_limits` at no extra cost.
 
-### statusLine.command に焼くパスの問題と解決(`CLAUDE_PLUGIN_DATA` + SessionStart)
+### The problem of which path to bake into statusLine.command, and the fix (`CLAUDE_PLUGIN_DATA` + SessionStart)
 
-wrapper を settings.json の `statusLine.command` に書くとき、**どのパスを焼き込むか**が落とし穴。実機調査(クリーン環境 + 公式 docs)で確定した制約:
+When you write the wrapper into `statusLine.command` in settings.json, **which path you bake in** is the trap. Constraints confirmed by testing on a real machine (clean environment + official docs):
 
-- `${CLAUDE_PLUGIN_ROOT}` は **statusLine 実行コンテキストでは展開されない**。statusLine に渡る env は `COLUMNS` / `LINES` / `FORCE_HYPERLINK` のみで、`CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` は来ない(hook context とは別)
-- `${CLAUDE_PLUGIN_ROOT}` の実体は **バージョン入り cache パス** `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`。これを literal で焼くと **更新で壊れる**(旧バージョンは orphaned 後 7 日で削除)
-- cache に `latest` / `current` 等のバージョン非依存 symlink は**存在しない**
-- install/enable/update 時に発火する hook も**存在しない**(`Setup` は `--init-only` 専用で通常起動では発火せず使えない)
+- `${CLAUDE_PLUGIN_ROOT}` is **not expanded in the statusLine execution context**. The only env passed to statusLine is `COLUMNS` / `LINES` / `FORCE_HYPERLINK`; `CLAUDE_PLUGIN_ROOT` / `CLAUDE_PLUGIN_DATA` do not arrive (it's a different context from a hook)
+- The real path behind `${CLAUDE_PLUGIN_ROOT}` is a **versioned cache path** `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`. Baking that in literally **breaks on update** (the old version is deleted 7 days after being orphaned)
+- The cache has **no** version-independent `latest` / `current` symlink
+- There is **no** hook that fires on install/enable/update either (`Setup` is `--init-only` only and doesn't fire on normal startup, so it's unusable)
 
-採用: **install 時に wrapper を `CLAUDE_PLUGIN_DATA`(バージョン更新を生き延びる永続ディレクトリ)へ 1 回コピーし、その安定パスを statusLine に焼く。**
+Adopted: **on install, copy the wrapper once into `CLAUDE_PLUGIN_DATA` (a persistent directory that survives version updates) and bake that stable path into statusLine.**
 
-- `CLAUDE_PLUGIN_DATA` = `~/.claude/plugins/data/<plugin-id>/`(`@`→`-`、例 `limit-usage-pokutuna-plugins`)。アンインストールまで永続
-- `guard.sh install` が `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` に wrapper をコピーし、`statusLine.command` にはそのパスを焼く。cache パスでないのでバージョン更新で壊れない
-- **SessionStart 等での自動再コピーはしない**(wrapper の中身はほぼ変わらない。素朴さ優先で hook を増やさない)。plugin 更新で wrapper を変えたときだけ `/limit-usage-setup install` を再実行すれば最新がコピーし直される — README に明記
-- env 伝播は層ごとに非対称(plugin-level hook = ROOT+DATA 両方 / skill frontmatter hook = ROOT のみ / Bash tool subprocess = どちらも無し)。install を処理する skill が `CLAUDE_PLUGIN_DATA` / `CLAUDE_PLUGIN_ROOT` を知るには **skill body の `${...}` 事前置換に頼る**(本体が置換。Bash tool subprocess の env には来ないので、skill body で env prefix として明示的に渡す)
+- `CLAUDE_PLUGIN_DATA` = `~/.claude/plugins/data/<plugin-id>/` (`@`→`-`, e.g. `limit-usage-pokutuna-plugins`). Persists until uninstall
+- `guard.sh install` copies the wrapper to `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` and bakes that path into `statusLine.command`. Since it's not the cache path, it doesn't break on a version update
+- **No automatic re-copy on SessionStart etc.** (the wrapper's contents barely change; prefer simplicity over adding a hook). Only when a plugin update changes the wrapper do you re-run `/limit-usage-setup install` to re-copy the latest — noted in the README
+- env propagation is asymmetric per layer (plugin-level hook = both ROOT+DATA / skill frontmatter hook = ROOT only / Bash tool subprocess = neither). For the skill that handles install to know `CLAUDE_PLUGIN_DATA` / `CLAUDE_PLUGIN_ROOT`, it **relies on `${...}` pre-substitution in the skill body** (Claude Code substitutes these; they don't reach the Bash tool subprocess env, so the skill body passes them explicitly as an env prefix)
 
-### 編集対象 settings.json の特定 — Bash の env を信用しない(実機検証で確定)
+### Identifying the settings.json to edit — don't trust Bash's env (confirmed by testing on a real machine)
 
-install が書き換える settings.json をどう特定するか。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`。ここに2つの落とし穴がある(クリーン環境テストで実際に踏んだ):
+How does install identify the settings.json it rewrites? For user scope it's `$CLAUDE_CONFIG_DIR/settings.json` if `CLAUDE_CONFIG_DIR` is set, otherwise `~/.claude/settings.json`. There are two traps here (both actually hit during clean-environment testing):
 
-- **`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置を動かさない**。`CLAUDE_CONFIG_DIR=/tmp/cc-clean` で起動しても CLAUDE.md は `~/.claude/CLAUDE.md` から読まれる(memory ディレクトリは `$CLAUDE_CONFIG_DIR` 側を指すのに非対称)。→ **コンテキストに出る CLAUDE.md のパスから設定ディレクトリを推測してはいけない**
-- **Bash tool subprocess の `$CLAUDE_CONFIG_DIR` は profile に汚染される**。非対話シェルが `.zshenv` 等を読み直すため、profile に `export CLAUDE_CONFIG_DIR=~/.claude` があると、`CLAUDE_CONFIG_DIR=/tmp/cc-clean claude` で起動しても **Bash サブプロセス内では本番値に上書きされる**。skill が Bash で `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` を評価すると本番 settings を掴み、クリーン環境テストのつもりで本番 dotfiles を編集しかける(= `CLAUDE_PLUGIN_DATA` で踏んだのと同じ「Bash subprocess の env は信用できない」問題)
+- **`CLAUDE_CONFIG_DIR` does not move `CLAUDE.md`'s location.** Even started with `CLAUDE_CONFIG_DIR=/tmp/cc-clean`, CLAUDE.md is still read from `~/.claude/CLAUDE.md` (asymmetric: the memory directory points at the `$CLAUDE_CONFIG_DIR` side). → **Do not infer the config directory from the CLAUDE.md path that shows up in context**
+- **The Bash tool subprocess's `$CLAUDE_CONFIG_DIR` is contaminated by the profile.** Because a non-interactive shell re-reads `.zshenv` etc., if the profile has `export CLAUDE_CONFIG_DIR=~/.claude`, then even when started with `CLAUDE_CONFIG_DIR=/tmp/cc-clean claude` the value is **overwritten with the production value inside the Bash subprocess**. If the skill evaluates `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` in Bash it grabs the production settings — about to edit production dotfiles while thinking it's a clean-environment test (= the same "you can't trust the Bash subprocess env" problem we hit with `CLAUDE_PLUGIN_DATA`)
 
-**判断: 深追いしない(現状の歯止めで十分)。** 実害が出るのは「profile で `CLAUDE_CONFIG_DIR` を export しつつ別 config dir で起動して install する」というテスト特有の状況のみで、通常利用では起きない。万一誤ったファイルを掴んでも、install は (1) `statusLine` を実際に定義しているファイルを選ぶ、(2) symlink は `realpath` で実体解決、(3) 編集前に AskUserQuestion で対象パスを提示して同意を取る、の三重の歯止めでユーザーが気づいて止められる(実際テストで「`~/.claude/settings.json` は dotfiles symlink」を見て止められた)。`${CLAUDE_CONFIG_DIR}` を skill body の `${...}` 置換で渡せれば根治しうるが、展開される保証は未確認で、コストに見合わないと判断
+**Decision: don't chase this further (the current safeguards are enough).** Actual harm only occurs in the test-specific situation of "exporting `CLAUDE_CONFIG_DIR` in the profile while starting with a different config dir and installing"; it doesn't happen in normal use. Even if the wrong file is grabbed, install has a triple safeguard so the user can notice and stop it: (1) it picks the file that actually defines `statusLine`, (2) it resolves symlinks to their real target with `realpath`, and (3) it presents the target path with AskUserQuestion for consent before editing (in testing this actually let us stop after seeing "`~/.claude/settings.json` is a dotfiles symlink"). Passing `${CLAUDE_CONFIG_DIR}` via `${...}` substitution in the skill body could cure it at the root, but expansion isn't guaranteed and isn't worth the cost.
 
-### 値の形式・単位(`~/.claude/statusline.ts` の実装で確認)
+### Value format / units (confirmed against the implementation in `~/.claude/statusline.ts`)
 
 ```ts
 rate_limits?: {
@@ -86,156 +86,219 @@ rate_limits?: {
 };
 ```
 
-- **`used_percentage`**: 単位は **パーセント(%)、0〜100 の数値**(小数あり、例 `23.5`)。**使用済み割合**(`80` = 80% 使った = 残り 20%)。公式ドキュメントも "from 0 to 100" と明記
-- **`resets_at`**: **Unix epoch 秒**(時刻。パーセントではない)
-- すべて optional。`rate_limits` 自体も含め欠落しうる(無料枠・初回 API 応答前)。参考実装も `input.rate_limits?.five_hour?.used_percentage` と全段 `?` でガードし、`fiveHourPct != null || sevenDayPct != null` で両方の欠落を確認している
-- → `set 5h 80%` の `80` は **`used_percentage` の上限(%)**。判定は `used_percentage >= 80` で deny
+- **`used_percentage`**: the unit is **percent (%), a number from 0 to 100** (may be fractional, e.g. `23.5`). It's the **fraction already used** (`80` = 80% used = 20% left). The official docs also state "from 0 to 100"
+- **`resets_at`**: **Unix epoch seconds** (a timestamp, not a percentage)
+- All optional. Everything — including `rate_limits` itself — can be absent (free tier, before the first API response). The reference implementation guards every level with `?` (`input.rate_limits?.five_hour?.used_percentage`) and checks for both being absent with `fiveHourPct != null || sevenDayPct != null`
+- → The `80` in `set 5h 80%` is the **ceiling on `used_percentage` (%)**. The check denies on `used_percentage >= 80`
 
-### wrapper が stdin パススルーだけで成立する根拠(実装で確認済み)
+### Cost ceiling for plans with no usage quota (implemented)
 
-参考実装(`~/.claude/statusline.ts`)の依存・出力を確認した結果、wrapper で完全透過できる:
+`rate_limits` (the 5h/7d used_percentage) only rides on responses for plans that have a usage quota. On plans without one, `rate_limits` doesn't arrive and the used_percentage check is ineffective (no rate in the snapshot → the rate side is always fail-open). So we added a **ceiling on cumulative session cost** (approximate USD, same scope as `/cost`) as a stopping criterion.
 
-| 依存/出力 | 実装での実際 | wrapper への影響 |
+The source is **`cost.total_cost_usd` from statusLine stdin**. Unlike `rate_limits`, it's not header-derived — it's computed by Claude Code from tokens, so it **arrives on stdin regardless of plan** (statusline.ts actually reads it). It rides on the same wrapper plumbing. The transcript has no cost field, only raw tokens, so since we don't need any time-windowed aggregation here, the statusLine side is sufficient.
+
+- **The value is just Claude Code's own estimate** (tokens × built-in rates). It can drift from actual billing, so the deny message carries a `~` (`Session cost ~$6.20 >= limit $5.00.`). Staying at 0 just means it never stops = safe side
+- **cost is session-only** (reject `--global`; read does not fall back to global either). `total_cost_usd` is the cumulative figure for one session and is never summed across sessions, so a global cost couldn't mean "total across all sessions" and would be meaningless (stated explicitly as a point)
+- **Detecting a no-quota plan** isn't strictly possible. If the snapshot has no `rate_limits`, it's either "a plan with no quota" or "before the first response" — don't assert; when no rate is visible via `status`, just **hint** at using cost rather than stating it as fact
+
+This adds just one judgment axis (no new hook / surface, `limit-usage-setup` untouched):
+
+1. **`statusline-wrapper.sh`** — pull `rate_limits`, `cost.total_cost_usd`, and `session_id` in one jq pass (`map(. // "null") | @tsv`) and write each scope only when its data is present (a `has_rate` flag for `[global]`, a non-empty session id for `[session]`)
+2. **`guard.sh`** — add `cost-usd` (aliases `cost`/`usd`) to `window_key` / a `total_cost_usd >= threshold` branch in `check` (after rate, OR'd) / make `resolve_limit` treat cost as session-only / make `set` reject `--global` for cost / make `clear`, `status`, and `deny` handle cost (with `$` notation) / make `status` show a cost hint when rate is absent
+3. **`limit-usage` SKILL.md** — normalize `cost=5` to `set cost 5` (strip `$`/`%`). Note that cost is session-only
+4. **README / design** — state that it's an estimate, cumulative per session, and for plans with no usage quota (without naming any provider)
+
+**A latent bug found during implementation (fixed)**: when receiving `jq … | @tsv` via `IFS=$'\t' read`, tab is IFS-whitespace, so **leading and consecutive empty fields collapse and values shift left**. When `five_hour` is absent but only `seven_day` is present, the `seven_day` value lands in `$five` and is mis-judged — that was a real bug. Cured it by making the jq side `map(. // "null")` so there are no empty fields, and `"null"` is rejected by the numeric check and falls open (still applied in the wrapper's capture jq). Note that with the later unification, `check` reads each key individually via `git config`, so this `@tsv` path no longer exists on the `check` side; the lesson is kept, and the bats "only 7d present" case guards against regression.
+
+### State consolidated into one file — scope = section / kind = key prefix (an important correction)
+
+**Background problem**: originally the snapshot was a single JSON (`cc-limit-usage-rate.json`) shared and overwritten by all sessions. `rate_limits` is an **account-shared value** (whichever session reports it, the 5h/7d used% is the same), so sharing is fine. But `cost.total_cost_usd` is a **per-session cumulative**. If put in a shared snapshot, it gets overwritten by "the last-responding session's cost," and another session's `check` would **judge against someone else's cumulative** (smaller than its own real cost → fail to stop; larger → stop too early). `cost` arrives on both subscription and API sessions, so it's not "safe because one of them doesn't get it." The condition is using `cost` with concurrent sessions at all; a mix is just one example.
+
+**First-stage correction (later unified)**: moved the snapshot into a gitconfig keyed by scope, in a file separate from the thresholds, `cc-limit-usage-rate.conf`. The motivation was to "separate the snapshot the wrapper writes frequently from the threshold the user writes rarely, isolating lock contention and cleanup targets."
+
+**Final correction (unification)**: judged the file split unnecessary and **consolidated into one file, `cc-limit-usage.conf`**. Reasons:
+- `git config` writes are atomic (create `.lock` → rename), so even in one file the values don't mix as long as the keys differ. Concurrency is practically a handful of sessions, and even a collision falls open and recovers on the next response, so no retry is needed either (a review showed "15% lock failures at 100-way concurrency," but that's an unrealistic load for human-driven sessions). The main motivation for splitting (avoiding contention) was thin.
+- One file means state location, cleanup, and migration all happen in one place, reducing the number of concepts.
+
+The structure after unification. **Sections are cut by scope (global / session); kinds are distinguished by key prefix** (`used-*` = measured / `limit-*` = threshold):
+
+```ini
+[global]                       ; account-shared
+    used-5h = 42               ; measured quota % (wrapper). Same no matter which session writes it → safe to overwrite
+    used-7d = 18
+    reset-5h = 1780417800
+    reset-7d = 1780999999
+    epoch = 1780843000          ; last-updated epoch of the quota measurement
+    schema = 1                  ; snapshot format generation (wrapper)
+    limit-5h = 90               ; threshold for --global (set)
+    limit-7d = 95
+[session "<sid>"]              ; per-session
+    used-usd = 4.52             ; measured cost (wrapper). Each session writes its own section → no collision
+    epoch = 1780843005          ; last-updated epoch of the cost measurement
+    limit-5h = 80               ; this session's threshold (set)
+    limit-7d = 90
+    limit-usd = 5               ; cost threshold (session-only)
+```
+
+Writer responsibilities are split by key prefix (no collision even co-located in the same section):
+- **wrapper**: writes only `used-*` / `reset-*` / `epoch` / `schema`. `rate_limits` → `[global]`, `cost.total_cost_usd` → `[session "<sid>"]`. One update epoch per scope. Never touches `limit-*`
+- **set / clear**: write only `limit-*`. Never touch `used-*`
+- **check**: reads only. Never writes
+- **Cleanup**: `[session]` sections accumulate, but on `set` / `clear` / `status` it **deletes session sections older than the GC period (default 7 days)** (GC at natural execution points, without adding another hook). `[global]` is one and doesn't grow. A `--remove-section` on an already-deleted section is swallowed as a no-op (safe even if a concurrent writer deleted it first)
+
+**check invariants (settled in review, guarded by tests)**:
+- **fail-open means "on any internal error, ultimately allow (exit 0, no output)."** Don't use `set -e`; swallow every `git config` read with `|| true`, so feeding it broken state never causes a deny (guarded by the bats "corrupt state file" case)
+- **staleness is judged by the epoch of the measured value's scope.** `used-5h`/`used-7d` freshness is `global.epoch`; `used-usd` freshness is `session.epoch`. For 5h/7d the scopes cross (threshold = session, measurement = global), but freshness is always read from the **measurement** side (global)
+- **session_id passes through verbatim** (subsection names are case-sensitive; no lowercasing or other normalization). An empty session_id is never written / never cost-judged (does not default to global)
+
+**Migration**: the old wrapper writes to a separate file (`cc-limit-usage-rate.json` / `cc-limit-usage-rate.conf`), so a plugin update alone won't refresh the `used-*`/`schema` the new guard reads in `cc-limit-usage.conf`, and the guard stays fail-open forever (= silently ineffective). To detect this, the wrapper writes `global.schema` every time, and on `set`/`clear`/`status` the guard emits **a re-install warning only** if "schema is absent/below EXPECTED, or a legacy file lingers" (check never warns = fail-open preserved). `install` deletes the legacy files and recreates them. Thresholds from old sessions are discarded, not migrated.
+
+### Why the wrapper works as pure stdin pass-through (confirmed in the implementation)
+
+After checking the dependencies and output of the reference implementation (`~/.claude/statusline.ts`), the wrapper can be fully transparent:
+
+| Dependency/output | What the implementation actually does | Effect on the wrapper |
 |---|---|---|
-| 入力 | stdin のみ (`JSON.parse(await Bun.stdin.text())`) | stdin を tee して渡せば透過 |
-| 引数 `argv` | 使っていない | wrapper が引数を消費してよい |
-| 環境変数 | `HOME` のみ | wrapper は env を素通し |
-| 外部コマンド | `ghq root` / `git -C` | wrapper は CWD/env を変えないので影響なし |
-| 出力 | stdout に1行 `console.log` のみ | wrapper が stdout に触らなければそのまま表示される |
-| 終了コード | 暗黙 0 | wrapper は元の exit code を返す |
+| Input | stdin only (`JSON.parse(await Bun.stdin.text())`) | Tee stdin and forward it → transparent |
+| Args `argv` | Not used | The wrapper may consume the arguments |
+| Environment variables | `HOME` only | The wrapper passes env through |
+| External commands | `ghq root` / `git -C` | The wrapper changes neither CWD nor env, so no effect |
+| Output | One line to stdout via `console.log` only | If the wrapper doesn't touch stdout, it's displayed as-is |
+| Exit code | Implicit 0 | The wrapper returns the original exit code |
 
-→ wrapper は「stdin を `$(cat)` で吸う → rate state file に保存 → `printf '%s' "$input" | exec "$@"` で元コマンドへ stdin パススルー(stdout/stderr/exit code は触らない)」で成立。`ts` は `jq` の `now` で付与。
+→ The wrapper works as "absorb stdin with `$(cat)` → save it to the state file → forward stdin to the original command with `printf '%s' "$input" | sh -c "$orig"` (without touching stdout/stderr/exit code)." `ts` is added via jq's `now`.
 
-## アーキテクチャ
+## Architecture
 
 ```
-[skill] /limit-usage-setup install ── wrapper を ${CLAUDE_PLUGIN_DATA}/ にコピー(安定パス確保・1回)
+[skill] /limit-usage-setup install ── copy the wrapper into ${CLAUDE_PLUGIN_DATA}/ (secure a stable path, once)
                                                     │
-[Claude Code] --rate_limits(応答ヘッダ由来)--> statusLine stdin JSON
+[Claude Code] --rate_limits (from response headers)--> statusLine stdin JSON
                                                     │
-   settings.json: statusLine.command = ~/.claude/plugins/data/<id>/statusline-wrapper.sh '<元コマンド>'
+   settings.json: statusLine.command = ~/.claude/plugins/data/<id>/statusline-wrapper.sh '<original command>'
                                                     │
-        wrapper.sh: stdin を state file に保存 → 元 statusLine に stdin パススルー
+        wrapper.sh: save stdin to the state file (write used-*) → pass stdin through to the original statusLine
                                                     │
-              ~/.local/state/cc-limit-usage-rate.json ({rate_limits, ts})
+              ~/.local/state/cc-limit-usage.conf  ([global] used-* / [session] used-usd / limit-*)
                                                     │
-[PreToolUse] guard.sh check ── 閾値(gitconfig)と比較 ── 超過なら deny
+[PreToolUse] guard.sh check ── compare used-* (measured) with limit-* (threshold) ── deny if over
                                                     │
-[skill] /limit-usage ── 閾値設定(set / clear / status)
-[skill] /limit-usage-setup ── install(wrapper差し替えを対話的に案内) / uninstall
+[skill] /limit-usage ── threshold settings (set / clear / status). Writes limit-*
+[skill] /limit-usage-setup ── install (interactively guides the wrapper swap) / uninstall
 ```
 
-## ディレクトリ構成
+## Directory layout
 
 ```
 limit-usage/
 ├── .claude-plugin/plugin.json
-├── hooks/hooks.json                    # PreToolUse(全ツール) → guard.sh check
+├── hooks/hooks.json                    # PreToolUse (all tools) → guard.sh check
 ├── bin/
-│   ├── statusline-wrapper.sh           # stdin tee → 元コマンドへ pass-through
+│   ├── statusline-wrapper.sh           # tee stdin → pass through to the original command
 │   └── guard.sh                        # check / set / clear / status / install / uninstall
-│                                       # install が wrapper を CLAUDE_PLUGIN_DATA にコピー
+│                                       # install copies the wrapper into CLAUDE_PLUGIN_DATA
 ├── skills/
-│   ├── limit-usage/SKILL.md            # set / clear / status(settings.json に触らない・Edit 権限なし)
-│   └── limit-usage-setup/SKILL.md      # install / uninstall(settings.json を編集・Edit 権限あり)
-├── design.md                           # このファイル
+│   ├── limit-usage/SKILL.md            # set / clear / status (doesn't touch settings.json; no Edit permission)
+│   └── limit-usage-setup/SKILL.md      # install / uninstall (edits settings.json; has Edit permission)
+├── design.md                           # this file
 └── README.md
 ```
 
-## コンポーネント仕様
+## Component spec
 
 ### 1. statusline-wrapper.sh
 
-- stdin を読み、`rate_limits` をそのまま + 取得時刻 `ts` を rate state file に保存(変換せず元構造を保持)
-  - rate state file: `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json`
-  - 例: `{"rate_limits":{"five_hour":{"used_percentage":42,"resets_at":1780417800},"seven_day":{...}},"ts":<epoch>}`
-  - `rate_limits` 欠落時(無料枠・初回応答前)は書かない(直前の snapshot を残す)
-- 第1引数の元コマンドに stdin をそのままパススルーして実行。元コマンドが無ければ何も出力しない(元々空だった statusLine は空のまま尊重。Claude Code に組み込みデフォルト statusLine は無いので、自前で行を出すのは余計な押し付けになる)
+- Reads stdin and, in a single jq pass, extracts `rate_limits` (5h/7d used% + reset), `cost.total_cost_usd`, and session_id simultaneously, saving them to the unified state file (cost and rate ride on the same stdin together)
+  - state file: `${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf` (the same file as thresholds; kinds distinguished by key prefix)
+  - If `rate_limits` is present, write `used-5h`/`used-7d`/`reset-*` + `epoch` to `[global]`; if `cost` and session_id are present, write `used-usd` + `epoch` to `[session "<sid>"]`. Each window is set when present / unset when absent (so one window dropping out doesn't leave a stale value). Whenever anything is written, stamp `global.schema` every time
+  - When both are absent (free tier, before the first response), write nothing (keep the previous snapshot). `rate_limits` is subscription-only; `cost` rides on all auth types
+  - **Writes only `used-*` / `reset-*` / `epoch` / `schema`.** Never touches `limit-*` (thresholds)
+- Passes stdin through unchanged to the original command in the first argument and runs it. If there is no original command, prints nothing (an empty statusLine stays empty and is respected. Claude Code has no built-in default statusLine, so emitting our own line would be an unwelcome imposition)
 
 ### 2. guard.sh + gitconfig state
 
-閾値・退避情報の state file(gitconfig 形式、`allow-until` 流):
-`${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf`
+One state file (gitconfig format) consolidating measured values and thresholds:
+`${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf` (for the structure, see the "State consolidated into one file" section above)
 
-```ini
-[global]
-    five-hour = 80          ; 5h枠の使用率上限(%)。未設定=無効
-    seven-day = 90          ; 7d枠の使用率上限(%)
-    orig-statusline = "~/.claude/statusline.ts"   ; uninstall 用に退避した元コマンド
-[session "<CLAUDE_SESSION_ID>"]
-    five-hour = 70          ; session 単位(既定の書き込み先・global より優先)
-```
+| Key | scope | Meaning | Writer | Reader (check) |
+|---|---|---|---|---|
+| `used-5h` / `used-7d` | global | measured quota utilization (%) | wrapper | global (account-shared) |
+| `reset-5h` / `reset-7d` | global | window reset epoch | wrapper | for the deny message |
+| `used-usd` | session | measured cumulative session cost (approx USD) | wrapper | own session only |
+| `epoch` | per scope | last-updated epoch of that scope's measurement | wrapper | staleness check (reads the epoch of the measured value's scope) |
+| `schema` | global | snapshot format generation | wrapper | stale-wrapper detection |
+| `limit-5h` / `limit-7d` | session/global | 5h/7d utilization ceiling (%) | `set 5h\|7d N` (default session / `--global` for global) | session.<id> → global → invalid if absent |
+| `limit-usd` | session | cumulative session cost ceiling (approx USD) | `set cost N` (**session-only; `--global` not allowed**) | session.<id> only (no fallback to global) |
 
-| キー | 意味 | 書き込み | 読み出し(check) |
-|---|---|---|---|
-| `five-hour` | 5h 枠の使用率上限(%) | `set 5h N`(既定 session / `--global` で global) | session.<id> → global → 無ければ無効 |
-| `seven-day` | 7d 枠の使用率上限(%) | `set 7d N` 同上 | 同上 |
-| `orig-statusline` | 退避した元 statusLine command | `install` 時に global へ | `uninstall` で復元 |
+(The original-command stash `orig-statusline` is dropped. On uninstall the skill strips the wrapper off the current command in settings.json, so it holds no stashed value = even if the user hand-edits after install, that edit is respected.)
 
-サブコマンド:
+Subcommands:
 
-- **`check`**(PreToolUse hook):rate state file を読み、各 window で閾値を session→global フォールバックで取得。`used_percentage >= 閾値` なら deny。
+- **`check`** (PreToolUse hook): reads the `used-*` (measured) in the state file, resolves the threshold `limit-*` with session→global fallback. For 5h/7d, `used-5h\|7d >= limit`; for cost, `used-usd >= limit-usd`. If any one is over, deny (rate → cost order, OR).
   ```json
   {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny",
-   "permissionDecisionReason":"5h usage 82% ≥ limit 80%. Resets at 14:30."}}
+   "permissionDecisionReason":"5h usage 82% >= limit 80%. Stopped by limit-usage. Resets at 14:30."}}
   ```
-  - **fail-open**: 閾値未設定 / rate state file 無し / `rate_limits` 欠落 / ts が古すぎる → `exit 0`(素通り)
-  - **自己デッドロック回避(重要)**: `tool_input.command` に `guard.sh` を含む呼び出しは閾値に関わらず常に素通り。guard 発動中もプラグイン自身の管理コマンド(`set` / `clear` / `status` / `uninstall`)は同じ Bash ツール経由なので、これを通さないと「閾値を下げて止めたのに下げ直す手段まで道連れ」でセッションが詰む。SKILL.md は guard.sh をフルパスで呼ぶため確実にマッチする(副作用: 文字列 `guard.sh` を含む任意コマンドも通るが、脱出ハッチがわずかに広いだけで実害なしと判断)
-- **`set 5h 80%` / `set 5h 80 7d 90`**: 閾値を session(既定)or `--global` で global に書く。複数ウィンドウを 1 回で指定可(全ペア検証 → まとめて書き込みで部分更新を防ぐ)
-- **`clear`**: 今このセッションで効いている閾値を全削除(session + global の両方)。スコープ指定は持たない。特定ウィンドウだけ残したい場合は `set` で上書きする
-- **`status`**: 現在の閾値設定 + rate state file の実残量を表示
-- **`install`**: settings.json の `statusLine.command` を wrapper に差し替え(対話的、下記)
-- **`uninstall`**: 退避した元コマンドに復元
+  - **fail-open (invariant)**: threshold unset / no state file / the relevant `used-*` absent / value not numeric / `epoch` too old → `exit 0` (pass through). Furthermore, **on any internal error, ultimately allow** — don't use `set -e`, and swallow every `git config` read with `|| true` (feeding it broken state never causes a deny)
+  - **staleness is judged by the epoch of the measured value's scope**: `used-5h`/`used-7d` freshness is `global.epoch`; `used-usd` freshness is `session.epoch`. For 5h/7d the scopes cross (threshold = session, measurement = global), but freshness is always read from the measurement side (global)
+  - **Avoiding self-deadlock (important)**: any call whose `tool_input.command` contains `guard.sh` always passes through regardless of the threshold. While the guard is tripped, the plugin's own management commands (`set` / `clear` / `status` / `uninstall`) also go through the same Bash tool, so unless these pass, "you lowered the threshold to stop yourself but lost the very means to change it back" deadlocks the session. SKILL.md calls guard.sh by full path, so it matches reliably (side effect: any command containing the string `guard.sh` also passes, but the escape hatch is only slightly wider, judged harmless)
+- **`set 5h 80%` / `set 5h 80 7d 90` / `set cost 5`**: write the threshold `limit-*` to session (default) or global with `--global`. Windows are `5h`/`7d`/`cost`, and multiple can be given in one call (validate all pairs → write them together to prevent partial updates). `$`/`%` are stripped, saving only the number. **`cost` is session-only and passing `--global` is an error** (`total_cost_usd` is a per-session cumulative that doesn't sum, so global is meaningless)
+- **`clear`**: removes every threshold `limit-*` in effect for this session (all 5h/7d/cost in session + global). It has no scope flag. To keep only a particular window, overwrite with `set`
+- **`status`**: shows the current thresholds `limit-*` + measured `used-*` values and their freshness. When quota isn't visible, gives a cost hint. Runs `warn_if_stale_wrapper` (below) first
+- **`install`**: copies the wrapper into `$CLAUDE_PLUGIN_DATA` and deletes legacy snapshot files. Prints `WRAPPER_PATH` + the path (settings.json is edited by the skill)
+- **`uninstall`**: deletes the copied wrapper and prints `WRAPPER_REMOVED` (settings.json restore is on the skill side)
 
-切り替えロジック(セッション/全体):
-- 書き込み先の選択(`--global` フラグ)で表現
-- 読み出しは常に `session.<id>` → `global` の順でフォールバック
-- 5h / 7d は独立した2キー(片方だけ設定も可)
+`set`/`clear`/`status` run **`warn_if_stale_wrapper`** before execution: if `global.schema` is below EXPECTED/absent, or legacy snapshot files (`cc-limit-usage-rate.json` / `-rate.conf`) linger, emit a "please re-install" warning to stderr only. This mechanism detects the case where forgetting to install after a plugin update leaves the old wrapper writing to old files while the new guard silently falls open. check does not warn (fail-open preserved).
 
-### 3. install の受け入れやすさ(limit-usage-setup skill で案内)
+Switching logic (session/global):
+- Expressed via the write-target choice (the `--global` flag)
+- Reads always fall back in `session.<id>` → `global` order
+- 5h / 7d are two independent keys (setting only one is allowed)
 
-原則: **勝手に settings.json を書き換えない**。skill が「変更内容(対象ファイル + before/after)を 1 行で提示 → Edit」。**同意点は Edit ツールのパーミッションプロンプト 1 つに集約**し、skill 側で別途 AskUserQuestion を重ねない(2 回 ask になって冗長。Edit が許可済みなら 0 回、未許可/禁止なら Edit プロンプトで 1 回 ask される)。settings.json を編集するのはこの `limit-usage-setup` skill だけで、日常の `limit-usage`(set/clear/status)からは `Edit` 権限を外して最小権限にしている。
+### 3. Making install easy to accept (guided by the limit-usage-setup skill)
 
-`/limit-usage-setup install` の流れ:
-1. settings.json を**決め打ちせず解決する**。user-scope は `CLAUDE_CONFIG_DIR` があれば `$CLAUDE_CONFIG_DIR/settings.json`、無ければ `~/.claude/settings.json`(`CLAUDE_CONFIG_DIR` は `CLAUDE.md` の位置は動かさないので、コンテキストの CLAUDE.md パスから設定ディレクトリを推測しない — 環境変数を直接見る)。`statusLine` がプロジェクト `.claude/settings.json` 側にあることもあるので、実際に `statusLine` を定義しているファイルを選ぶ。**symlink なら `realpath` で実体を編集**(symlink を Edit でその場置換すると dotfiles 連携が壊れる。実機で踏んだ)。実体が dotfiles なら commit が要る旨を伝える
-2. 現 `statusLine.command` を読む
-3. `guard.sh install` が wrapper を `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` にコピーし、before/after 差分を提示。**焼き込むのは `CLAUDE_PLUGIN_DATA` の安定パス**(バージョン非依存):
+Principle: **never rewrite settings.json on its own.** The skill "presents the change (target file + before/after) in one line → Edit." **The single consent point is collapsed into the Edit tool's permission prompt**; the skill doesn't pile on a separate AskUserQuestion (that would ask twice and be redundant; if Edit is already allowed it's 0 asks, if unallowed/denied the Edit prompt asks once). Only this `limit-usage-setup` skill edits settings.json; the everyday `limit-usage` (set/clear/status) drops the `Edit` permission for least privilege.
+
+The `/limit-usage-setup install` flow:
+1. **Resolve settings.json rather than hardcoding it.** For user scope it's `$CLAUDE_CONFIG_DIR/settings.json` if `CLAUDE_CONFIG_DIR` is set, otherwise `~/.claude/settings.json` (`CLAUDE_CONFIG_DIR` does not move CLAUDE.md's location, so don't infer the config dir from the CLAUDE.md path in context — read the env var directly). `statusLine` may live in a project `.claude/settings.json` instead, so pick the file that actually defines `statusLine`. **If it's a symlink, edit the real target via `realpath`** (in-place editing of a symlink with Edit breaks dotfiles integration — hit on a real machine). If the real target is in dotfiles, tell the user a commit is needed
+2. Read the current `statusLine.command` (if it already contains `statusline-wrapper.sh`, it's already wrapped; re-install just refreshes the copy, no settings.json edit). 
+3. `guard.sh install` copies the wrapper to `$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh` (also deletes legacy snapshot files) and prints `WRAPPER_PATH` + the path. **What gets baked in is the stable `CLAUDE_PLUGIN_DATA` path** (version-independent). The skill wraps the current command in single quotes and assembles `<wrapper> '<current command>'`:
    ```
-   現在:   "command": "~/.claude/statusline.ts"
-   変更後: "command": "~/.claude/plugins/data/<id>/statusline-wrapper.sh '~/.claude/statusline.ts'"
-   （表示はそのまま。利用率を裏でファイルに記録します。元コマンドは退避し uninstall で復元可)
+   Before: "command": "~/.claude/statusline.ts"
+   After:  "command": "~/.claude/plugins/data/<id>/statusline-wrapper.sh '~/.claude/statusline.ts'"
+   (Display unchanged. It records utilization to a file in the background. uninstall strips the wrapper to restore)
    ```
-4. 変更内容を 1 行提示してから settings.json(実体)を Edit(AskUserQuestion は挟まない。Edit プロンプトが同意点)。`type` / `padding` は保持
-5. statusLine 未設定のユーザーには元コマンド無しで wrapper を噛ませる(表示は空のまま・計測のみ)
-6. `uninstall` でワンコマンド復元。アンインストール手順は README に明記
-7. **冪等**: install を再実行しても二重ラップしない(既に wrapper なら何もしない)
-8. **更新**: plugin 更新で wrapper の中身を変えたら `/limit-usage-setup install` を再実行(安定パスは不変、コピーを上書きするだけ)
+4. Present the change in one line, then Edit settings.json (the real file). (No AskUserQuestion in between; the Edit prompt is the consent point.) Preserve `type` / `padding`
+5. For a user with no statusLine, attach the wrapper with no original command (display stays empty; metering only)
+6. `uninstall`: the skill **strips the wrapper off the current command** in settings.json to restore (it does not stash the original = even if the user hand-edits after install, that edit is respected). The uninstall steps are noted in the README
+7. **Idempotent**: re-running install doesn't double-wrap (if it's already a wrapper, do nothing)
+8. **Update**: when a plugin update changes the wrapper's contents, re-run `/limit-usage-setup install` (the stable path is unchanged; it just overwrites the copy)
 
-### 4. SKILL.md(2つに分割)
+### 4. SKILL.md (split in two)
 
-- **`limit-usage`**(日常): `5h=80 7d=90`(`--global`)/ `clear` / `status`。`settings.json` に触らないので `allowed-tools` は guard.sh の Bash のみ(`Edit` なし)。ユーザーの自然な入力(`5h=80`・`set` 省略・複数ウィンドウ)を skill が正規形 `set 5h 80 7d 90` に変換して呼ぶ。未 install なら `/limit-usage-setup install` を案内。**出力は実行コマンドの結果を簡潔に述べるだけ**(set/clear は 1 行確認、status は status 出力。現在値の長い内訳や他設定の案内・フォロー質問を並べない)
-- **`limit-usage-setup`**(セットアップ): `install` / `uninstall`。`settings.json` を編集するため `allowed-tools` に `Edit(~/.claude/settings.json)` / `Edit(.claude/settings.json)` と、wrapper コピー先の `CLAUDE_PLUGIN_DATA` を渡す Bash を持つ
-- どちらも frontmatter `argument-hint` で引数ヒントを表示
+- **`limit-usage`** (everyday): `5h=80 7d=90` (`--global`) / `clear` / `status`. Since it doesn't touch `settings.json`, its `allowed-tools` is only the Bash for guard.sh (no `Edit`). The skill converts the user's natural input (`5h=80`, omitted `set`, multiple windows) into the canonical form `set 5h 80 7d 90` and calls it. If not installed, points to `/limit-usage-setup install`. **Output just states the result of the executed command briefly** (set/clear: one-line confirmation; status: the status output. Don't pile on a long breakdown of current values, guidance about other settings, or follow-up questions)
+- **`limit-usage-setup`** (setup): `install` / `uninstall`. Because it edits `settings.json`, its `allowed-tools` has `Edit(~/.claude/settings.json)` / `Edit(.claude/settings.json)` plus the Bash that passes `CLAUDE_PLUGIN_DATA` (the wrapper copy destination)
+- Both show an argument hint via the frontmatter `argument-hint`
 
-## 設計上の注意点
+## Design notes
 
-- **測定コストゼロ**: `-p` を使わない。本体の通常応答に相乗りした `rate_limits` のみ
-- **可逆性**: wrapper 差し替えは元コマンドを退避し uninstall で完全復元。settings を壊さない
-- **無料枠 / 初回応答前**: `rate_limits` が来ない → fail-open(素通り、警告ログのみ)
-- **state file の鮮度**: statusLine は毎応答 + `refreshInterval` で更新。古すぎる ts なら素通り(安全側)
-- **閾値の意味**: `used_percentage` の上限(`set 5h 80%` = 5h 枠を 80% 使ったら止める)
-- **自己デッドロック回避**: guard 発動中も `set`/`clear`/`status`/`uninstall` は同じ Bash ツール経由 → これらをブロックすると復旧不能。`check` は `guard.sh` を含むコマンドを常に素通りさせて回避(動作確認で発覚した実バグ。`--plugin-dir` テストで `status` 自身がブロックされた)
-- **statusLine に焼くパス**: `${CLAUDE_PLUGIN_ROOT}` は statusLine で展開されず、cache パスはバージョン更新で壊れる。install が `CLAUDE_PLUGIN_DATA` の安定パスに wrapper を 1 回コピーし、それを焼く。詳細は「statusLine.command に焼くパスの問題と解決」節
-- **settings.json の symlink**: dotfiles を symlink で管理しているユーザーでは、Edit が symlink を実ファイルに置換して連携を壊す。install/uninstall は `realpath` で実体を解決してから編集する(実機テストで発覚)
-- **編集対象 settings.json の特定**: `~/.claude/settings.json` を決め打ちせず `CLAUDE_CONFIG_DIR` を考慮する。ただし Bash subprocess の `$CLAUDE_CONFIG_DIR` は profile に汚染されうるので過信しない。実害は限定的で深追いしない判断。詳細は「編集対象 settings.json の特定 — Bash の env を信用しない」節
+- **Zero metering cost**: don't use `-p`. Only `rate_limits` riding on the normal response
+- **Reversibility**: install wraps the live `statusLine.command`, and uninstall strips the wrapper back off the current command — the skill does not stash the original (so a statusLine the user edited after install is respected). It doesn't break settings
+- **Free tier / before the first response**: `rate_limits` doesn't arrive → fail-open (pass through, warning log only)
+- **State file freshness**: statusLine updates on every response + `refreshInterval`. A too-old ts → pass through (safe side)
+- **Meaning of thresholds**: 5h/7d are the ceiling on `used_percentage` (`set 5h 80%` = stop once 80% of the 5h window is used; values only arrive for plans with a usage quota). cost is the ceiling on cumulative session approximate USD (`set cost 5` = stop at ~$5; for plans with no usage quota; session-only). cost is Claude Code's estimate, so it can drift from actual billing
+- **Avoiding self-deadlock**: while the guard is tripped, `set`/`clear`/`status`/`uninstall` go through the same Bash tool → blocking them would make recovery impossible. `check` avoids this by always passing commands that contain `guard.sh` (a real bug found during testing: under the `--plugin-dir` test, `status` itself got blocked)
+- **Path baked into statusLine**: `${CLAUDE_PLUGIN_ROOT}` is not expanded in statusLine, and the cache path breaks on a version update. install copies the wrapper once to the stable `CLAUDE_PLUGIN_DATA` path and bakes that. See the "The problem of which path to bake into statusLine.command" section
+- **settings.json symlink**: for users who manage dotfiles via symlink, Edit replaces the symlink with a plain file and breaks the integration. install/uninstall resolve the real target via `realpath` before editing (found during testing on a real machine)
+- **Identifying the settings.json to edit**: don't hardcode `~/.claude/settings.json`; account for `CLAUDE_CONFIG_DIR`. But the Bash subprocess's `$CLAUDE_CONFIG_DIR` can be contaminated by the profile, so don't over-trust it. The harm is limited, so decided not to chase it further. See the "Identifying the settings.json to edit — don't trust Bash's env" section
 
-## 参考にする既存プラグイン
+## Existing plugins to reference
 
-- `allow-until`: gitconfig 形式 state file(`git config -f`)、session.<id> セクション、PreToolUse で `permissionDecision` を返す構造
-- `pushover-notify`: hooks.json + bin + skills の構成、skill の toggle 案内
+- `allow-until`: gitconfig-format state file (`git config -f`), `session.<id>` sections, the structure of returning a `permissionDecision` from PreToolUse
+- `pushover-notify`: the hooks.json + bin + skills composition, the skill's toggle guidance
 
-## 未確定 / 実装時に確認すること
+## Open / to confirm during implementation
 
-- `rate_limit_event` に `utilization`(数値%)が乗るかは未確認(乗れば `-p` 不要のまま % 閾値を別ソースで補完する選択肢が生まれるが、現状は statusLine の `used_percentage` で足りる)
-- `status`(allowed_warning/rejected)を補助シグナルとして使うか(現設計は used_percentage の閾値のみで判定。将来オプション)
-- `docs/CHECKLIST.md` に沿って plugin.json / marketplace 登録を行う
+- Whether `rate_limit_event` carries `utilization` (a numeric %) is unconfirmed (if it does, an option opens to supplement the % threshold from another source without `-p`, but for now statusLine's `used_percentage` is enough)
+- Whether to use `status` (allowed_warning/rejected) as an auxiliary signal (the current design judges on the used_percentage threshold alone; a future option)
+- Register plugin.json / the marketplace following `docs/CHECKLIST.md`
