@@ -4,25 +4,60 @@
 # Reads usage captured by statusline-wrapper.sh (zero metering cost) and, from a
 # PreToolUse hook, denies tool calls once a window passes the configured threshold.
 #
-# State files:
-#   ${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage-rate.json  - usage snapshot (written by wrapper)
-#   ${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf        - thresholds (git-config format)
+# State file (git-config; ${XDG_STATE_HOME:-~/.local/state}/cc-limit-usage.conf):
+#   One file, sectioned by scope. Key prefix marks the kind:
+#     [global]                       account-wide
+#         used-5h / used-7d          measured quota %      (statusline-wrapper.sh)
+#         reset-5h / reset-7d        window reset epoch     (statusline-wrapper.sh)
+#         epoch                      quota snapshot mtime   (statusline-wrapper.sh)
+#         schema                     snapshot format gen    (statusline-wrapper.sh)
+#         limit-5h / limit-7d        --global thresholds    (set/clear)
+#     [session "<id>"]               per-session
+#         used-usd                   measured session cost  (statusline-wrapper.sh)
+#         epoch                      cost snapshot mtime     (statusline-wrapper.sh)
+#         limit-5h / limit-7d / limit-usd   thresholds       (set/clear)
+#
+#   Writer split (each writer owns its key prefix; they never collide, so
+#   co-locating them in one section is safe):
+#     - statusline-wrapper.sh writes used-* / reset-* / epoch / schema
+#     - set/clear write limit-*
+#     - check only READS, and is fail-open: it must end in allow (exit 0, no
+#       output) on ANY internal error. Hence no `set -e`, and every read is
+#       `|| true`. A measured value is only honoured if its OWN scope's epoch is
+#       fresh: used-5h/7d -> global.epoch, used-usd -> session.epoch.
+#   session_id is used verbatim (subsection names are case-sensitive; never
+#   normalize it) and a missing/empty session_id is skipped, not defaulted.
 #
 # Usage:
-#   guard.sh check                    - Hook mode: read JSON from stdin, deny if over threshold
-#   guard.sh set 5h 80 [--global]     - Set 5h window usage limit (%)
-#   guard.sh set 7d 90 [--global]     - Set 7d window usage limit (%)
+#   guard.sh check                      - Hook mode: read JSON from stdin, deny if over threshold
+#   guard.sh set 5h 80 [--global]       - Set 5h window usage limit (%, plans with a usage quota)
+#   guard.sh set 7d 90 [--global]       - Set 7d window usage limit (%, plans with a usage quota)
+#   guard.sh set cost 5                 - Set this session's cost limit (approx USD; use when 5h/7d aren't available)
 #   guard.sh set 5h 80 7d 90 [--global] - Set multiple windows at once
-#   guard.sh clear                    - Remove every threshold in effect now (this session + global)
-#   guard.sh status                   - Show thresholds and current usage
-#   guard.sh install '<orig command>' - Print before/after for wrapping statusLine (skill applies it)
-#   guard.sh uninstall                - Print the saved original statusLine command to restore
+#   guard.sh clear                      - Remove every threshold in effect now (this session + global)
+#   guard.sh status                     - Show thresholds and current usage
+#   guard.sh install                    - Copy the wrapper into CLAUDE_PLUGIN_DATA; the skill rewrites settings.json
+#   guard.sh uninstall                  - Remove the copied wrapper; the skill restores settings.json
 
 set -uo pipefail
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
-RATE_FILE="$STATE_DIR/cc-limit-usage-rate.json"
-CONFIG_FILE="$STATE_DIR/cc-limit-usage.conf"
+STATE_FILE="$STATE_DIR/cc-limit-usage.conf"
+
+# Snapshot schema this guard understands. statusline-wrapper.sh stamps the
+# snapshot it writes with its own SNAP_SCHEMA; if what we read is older (or a
+# pre-unification snapshot file is still around), the installed wrapper is stale
+# — the user updated the plugin but didn't re-run install, so the frozen data/
+# copy of the wrapper is still the old one. We only warn (never block); check
+# stays fail-open. Keep this in sync with SNAP_SCHEMA in statusline-wrapper.sh.
+EXPECTED_SCHEMA=1
+# Pre-unification wrappers wrote a separate snapshot file (JSON, then a split
+# .conf). Their presence is a tell that an old wrapper is (or was) the one
+# running. install removes them; they are never read.
+LEGACY_FILES=(
+    "$STATE_DIR/cc-limit-usage-rate.json"
+    "$STATE_DIR/cc-limit-usage-rate.conf"
+)
 
 # Usage snapshots older than this are ignored (fail-open). statusLine refreshes
 # on every response and the wrapper rewrites the snapshot each time, so a stale
@@ -30,38 +65,100 @@ CONFIG_FILE="$STATE_DIR/cc-limit-usage.conf"
 # the tool run than to block on old numbers.
 STALE_SECONDS="${LIMIT_USAGE_STALE_SECONDS:-300}"
 
-# Sentinel stored in orig-statusline when the user had no statusLine to wrap, so
-# status/uninstall can tell "installed, nothing to restore" from "never installed".
-NO_ORIG="(none)"
+# Session sections older than this are garbage-collected on the next
+# set/clear/status. Far above STALE_SECONDS so an idle-but-live session is never
+# dropped; this only sweeps sessions that have truly ended.
+SESSION_GC_SECONDS="${LIMIT_USAGE_SESSION_GC_SECONDS:-604800}"  # 7 days
 
 format_time() {
     date -r "$1" '+%H:%M' 2>/dev/null || date -d "@$1" '+%H:%M'
 }
 
-cfg_get() {
-    git config -f "$CONFIG_FILE" "$1" 2>/dev/null || true
+# " (12s)" or " (400s, STALE — guard fails open)" for a snapshot timestamp.
+age_note() {
+    local ts="$1" now="$2"
+    [[ "$ts" =~ ^[0-9]+$ ]] || return 0
+    local age=$(( now - ts ))
+    if (( age > STALE_SECONDS )); then
+        printf ' (%ss, STALE — guard fails open)' "$age"
+    else
+        printf ' (%ss)' "$age"
+    fi
 }
 
+cfg_get() {
+    git config -f "$STATE_FILE" "$1" 2>/dev/null || true
+}
+
+# Drop session sections whose epoch is older than the GC window — these belong
+# to sessions that have ended. Called from set/clear/status (natural,
+# low-frequency points) so we never add a hook just to clean up. The [global]
+# section is never GC'd. A section that's already gone is a no-op (the remove is
+# guarded), so a concurrent writer racing us is harmless.
+gc_sessions() {
+    [[ -f "$STATE_FILE" ]] || return 0
+    local now sid ts line
+    now="$(date +%s)"
+    # List every session.<id>.epoch and drop the section if too old.
+    while IFS= read -r line; do
+        sid="${line#session.}"; sid="${sid%.epoch *}"
+        ts="${line##* }"
+        [[ "$ts" =~ ^[0-9]+$ ]] || continue
+        (( now - ts > SESSION_GC_SECONDS )) && \
+            git config -f "$STATE_FILE" --remove-section "session.${sid}" 2>/dev/null || true
+    done < <(git config -f "$STATE_FILE" --get-regexp '^session\..*\.epoch$' 2>/dev/null)
+}
+
+# Print a one-line warning to stderr if the installed statusLine wrapper looks
+# stale: the unified snapshot carries an older/absent schema, or a
+# pre-unification snapshot file is still present (an old wrapper is the one
+# actually running). Silent when up to date, never installed, or no snapshot yet
+# — we don't nag before the first response. Called from set/clear/status
+# (low-frequency, user-facing), never from check.
+warn_if_stale_wrapper() {
+    local schema legacy
+    schema="$(cfg_get global.schema)"
+    legacy=""
+    for f in "${LEGACY_FILES[@]}"; do [[ -f "$f" ]] && legacy=1; done
+
+    if [[ "$schema" =~ ^[0-9]+$ ]] && (( schema >= EXPECTED_SCHEMA )) && [[ -z "$legacy" ]]; then
+        return 0
+    fi
+    # Below current, OR a legacy snapshot is lingering. But stay silent if there
+    # is no sign of any wrapper at all (not installed / no response yet).
+    if [[ ! "$schema" =~ ^[0-9]+$ && -z "$legacy" ]]; then
+        return 0
+    fi
+    echo "Warning: your statusLine wrapper looks outdated (snapshot is old-format or pre-schema)." >&2
+    echo "         Re-run /limit-usage-setup install to refresh it, or limits won't apply." >&2
+}
+
+# Map a friendly window name to its key suffix. Threshold keys are limit-<suffix>
+# and measured keys are used-<suffix>, so the suffix composes both.
 window_key() {
     case "$1" in
-        5h|five-hour|five_hour) echo "five-hour" ;;
-        7d|seven-day|seven_day) echo "seven-day" ;;
+        5h|five-hour|five_hour) echo "5h" ;;
+        7d|seven-day|seven_day) echo "7d" ;;
+        cost|usd|cost-usd)      echo "usd" ;;
         *) echo "" ;;
     esac
 }
 
-# Resolve a threshold for a window: session.<id> -> global -> empty.
+# Resolve a threshold for a window suffix: session.<id> -> global -> empty.
+# usd is session-only: total_cost_usd is a per-session cumulative figure (same
+# scope as /cost) and never adds up across sessions, so a global cost limit
+# would be meaningless — don't fall back to global for it.
 resolve_limit() {
-    local val=""
-    [[ -n "${CLAUDE_SESSION_ID:-}" ]] && val="$(cfg_get "session.${CLAUDE_SESSION_ID}.$1")"
-    [[ -z "$val" ]] && val="$(cfg_get "global.$1")"
+    local suffix="$1" val=""
+    [[ -n "${CLAUDE_SESSION_ID:-}" ]] && val="$(cfg_get "session.${CLAUDE_SESSION_ID}.limit-${suffix}")"
+    [[ "$suffix" != usd && -z "$val" ]] && val="$(cfg_get "global.limit-${suffix}")"
     echo "$val"
 }
 
 check() {
-    # Fail-open: no jq, or no snapshot yet (free tier / before first API response).
+    # Fail-open: no jq, or no state file yet (before first API response).
     command -v jq >/dev/null 2>&1 || exit 0
-    [[ -f "$RATE_FILE" ]] || exit 0
+    [[ -f "$STATE_FILE" ]] || exit 0
 
     # One jq over stdin for both the session id and the command being run.
     local cmd
@@ -73,24 +170,46 @@ check() {
     # guard would block set/clear/status too — the commands needed to recover.
     [[ "$cmd" == *"guard.sh"* ]] && exit 0
 
-    local five seven five_reset seven_reset ts
-    IFS=$'\t' read -r five seven five_reset seven_reset ts < <(
-        jq -r '.rate_limits as $r | [$r.five_hour.used_percentage, $r.seven_day.used_percentage, $r.five_hour.resets_at, $r.seven_day.resets_at, .ts] | @tsv' "$RATE_FILE" 2>/dev/null)
-
-    # Fail-open: snapshot too old to trust.
-    [[ -n "$ts" && "$ts" != "null" ]] && (( $(date +%s) - ${ts%.*} > STALE_SECONDS )) && exit 0
-
-    local five_limit seven_limit
-    five_limit="$(resolve_limit five-hour)"
-    seven_limit="$(resolve_limit seven-day)"
-
-    # awk for float-safe >= ; deny on the first window over its limit. Skip a
-    # window unless both used and limit are plain numbers (fail-open on garbage).
+    local now; now="$(date +%s)"
     local num='^[0-9]+([.][0-9]+)?$'
+
+    # Measured quota is account-wide -> [global], and its freshness is global.epoch.
+    # (Even when the *threshold* lives in the session scope, the *measurement*
+    # and thus its staleness are global.) Stale/missing -> treat as absent.
+    local five="" seven="" five_reset="" seven_reset="" gepoch
+    gepoch="$(cfg_get global.epoch)"
+    if [[ "$gepoch" =~ ^[0-9]+$ ]] && (( now - gepoch <= STALE_SECONDS )); then
+        five="$(cfg_get global.used-5h)"
+        seven="$(cfg_get global.used-7d)"
+        five_reset="$(cfg_get global.reset-5h)"
+        seven_reset="$(cfg_get global.reset-7d)"
+    fi
+
+    # Measured cost is per-session -> read only THIS session's [session "<id>"],
+    # and its freshness is that session's epoch. Never another session's cost
+    # (that was the shared-snapshot bug).
+    local cost="" sepoch
+    if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+        sepoch="$(cfg_get "session.${CLAUDE_SESSION_ID}.epoch")"
+        if [[ "$sepoch" =~ ^[0-9]+$ ]] && (( now - sepoch <= STALE_SECONDS )); then
+            cost="$(cfg_get "session.${CLAUDE_SESSION_ID}.used-usd")"
+        fi
+    fi
+
+    local five_limit seven_limit cost_limit
+    five_limit="$(resolve_limit 5h)"
+    seven_limit="$(resolve_limit 7d)"
+    cost_limit="$(resolve_limit usd)"
+
+    # awk for float-safe >= ; deny on the first window over its limit (rate first,
+    # then cost — OR across all three). Skip a window unless both measured value
+    # and limit are plain numbers (fail-open on garbage / missing).
     if [[ "$five" =~ $num && "$five_limit" =~ $num ]] && awk -v u="$five" -v l="$five_limit" 'BEGIN{exit !(u>=l)}'; then
         deny "5h" "$five" "$five_limit" "$five_reset"
     elif [[ "$seven" =~ $num && "$seven_limit" =~ $num ]] && awk -v u="$seven" -v l="$seven_limit" 'BEGIN{exit !(u>=l)}'; then
         deny "7d" "$seven" "$seven_limit" "$seven_reset"
+    elif [[ "$cost" =~ $num && "$cost_limit" =~ $num ]] && awk -v u="$cost" -v l="$cost_limit" 'BEGIN{exit !(u>=l)}'; then
+        deny "cost" "$cost" "$cost_limit" ""
     fi
     exit 0
 }
@@ -99,11 +218,18 @@ deny() {
     local label="$1" used="$2" limit="$3" reset="$4" resets=""
     [[ -n "$reset" && "$reset" != "null" ]] && resets=" Resets at $(format_time "${reset%.*}")."
     local reason
-    reason="$(printf '%s usage %.0f%% >= limit %.0f%%. Stopped by limit-usage.%s' "$label" "$used" "$limit" "$resets")"
+    if [[ "$label" == cost ]]; then
+        # cost is Claude Code's own estimate (token count × built-in rates), so
+        # it can be approximate — flag it with `~`.
+        reason="$(printf 'Session cost ~$%.2f >= limit $%.2f. Stopped by limit-usage.' "$used" "$limit")"
+    else
+        reason="$(printf '%s usage %.0f%% >= limit %.0f%%. Stopped by limit-usage.%s' "$label" "$used" "$limit" "$resets")"
+    fi
     jq -nc --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
 }
 
-# Where set writes: --global, else this session, else global (so it still works).
+# Where set writes: --global, else this session, else global (so it still works
+# when invoked without a session id).
 target_section() {
     if [[ "$1" == global ]]; then
         echo "global"
@@ -114,7 +240,7 @@ target_section() {
     fi
 }
 
-# Accepts one or more "<window> <percent>" pairs, e.g. `set 5h 80 7d 90`.
+# Accepts one or more "<window> <value>" pairs, e.g. `set 5h 80 7d 90`.
 # The skill normalizes friendlier input (5h=80, set omitted) into this form.
 # All pairs are validated before any is written, so a bad pair never leaves a
 # partial update.
@@ -129,31 +255,38 @@ set_limit() {
     done
 
     (( ${#args[@]} >= 2 && ${#args[@]} % 2 == 0 )) || {
-        echo "Error: expected <window> <percent> pair(s), e.g. set 5h 80 7d 90 (got '${args[*]}')" >&2
+        echo "Error: expected <window> <value> pair(s), e.g. set 5h 80 7d 90 (got '${args[*]}')" >&2
         exit 1
     }
 
-    # First pass: validate every pair and collect resolved keys/values.
-    local keys=() pcts=() wins=()
-    local i win pct key
+    # First pass: validate every pair and collect resolved suffixes/values.
+    local suffixes=() vals=() wins=()
+    local i win val suffix
     for (( i = 0; i < ${#args[@]}; i += 2 )); do
         win="${args[i]}"
-        pct="${args[i+1]}"
-        key="$(window_key "$win")"
-        [[ -z "$key" ]] && { echo "Error: window must be 5h or 7d (got '${win}')" >&2; exit 1; }
-        pct="${pct%\%}"
-        [[ "$pct" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "Error: percent must be a number (got '${pct}')" >&2; exit 1; }
-        wins+=("$win"); keys+=("$key"); pcts+=("$pct")
+        val="${args[i+1]}"
+        suffix="$(window_key "$win")"
+        [[ -z "$suffix" ]] && { echo "Error: window must be 5h, 7d, or cost (got '${win}')" >&2; exit 1; }
+        val="${val#\$}"; val="${val%\%}"
+        [[ "$val" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "Error: value must be a number (got '${val}')" >&2; exit 1; }
+        # cost is per-session only (the cost figure doesn't accumulate across
+        # sessions), so a global cost limit can't be meaningful.
+        [[ "$suffix" == usd && "$scope" == global ]] && { echo "Error: cost is per-session; --global is not allowed for cost" >&2; exit 1; }
+        wins+=("$win"); suffixes+=("$suffix"); vals+=("$val")
     done
 
-    # Second pass: write them all.
+    # Second pass: write them all. cost is a USD amount, the rest are percents.
     local section
     section="$(target_section "$scope")"
     mkdir -p "$STATE_DIR"
     local out=()
-    for (( i = 0; i < ${#keys[@]}; i++ )); do
-        git config -f "$CONFIG_FILE" "${section}.${keys[i]}" "${pcts[i]}"
-        out+=("${wins[i]}=${pcts[i]}%")
+    for (( i = 0; i < ${#suffixes[@]}; i++ )); do
+        git config -f "$STATE_FILE" "${section}.limit-${suffixes[i]}" "${vals[i]}"
+        if [[ "${suffixes[i]}" == usd ]]; then
+            out+=("${wins[i]}=\$${vals[i]}")
+        else
+            out+=("${wins[i]}=${vals[i]}%")
+        fi
     done
     echo "Set ${out[*]} (${scope})."
 }
@@ -163,13 +296,17 @@ set_limit() {
 # the keys that actually existed, so the user sees what was cleared.
 clear_limits() {
     local cleared=()
-    local section key val
+    local section suffix val
     for section in ${CLAUDE_SESSION_ID:+"session.${CLAUDE_SESSION_ID}"} global; do
-        for key in five-hour seven-day; do
-            val="$(cfg_get "${section}.${key}")"
+        for suffix in 5h 7d usd; do
+            val="$(cfg_get "${section}.limit-${suffix}")"
             [[ -z "$val" ]] && continue
-            git config -f "$CONFIG_FILE" --unset "${section}.${key}" 2>/dev/null || true
-            cleared+=("${section}.${key}=${val}%")
+            git config -f "$STATE_FILE" --unset "${section}.limit-${suffix}" 2>/dev/null || true
+            if [[ "$suffix" == usd ]]; then
+                cleared+=("${section}.limit-${suffix}=\$${val}")
+            else
+                cleared+=("${section}.limit-${suffix}=${val}%")
+            fi
         done
     done
     if (( ${#cleared[@]} == 0 )); then
@@ -180,56 +317,58 @@ clear_limits() {
 }
 
 status() {
-    local fl sl
-    fl="$(resolve_limit five-hour)"
-    sl="$(resolve_limit seven-day)"
+    local fl sl cl
+    fl="$(resolve_limit 5h)"
+    sl="$(resolve_limit 7d)"
+    cl="$(resolve_limit usd)"
     echo "limit-usage status"
     echo ""
-    echo "Thresholds (effective: session -> global):"
-    echo "  5h limit: ${fl:-(not set)}${fl:+%}"
-    echo "  7d limit: ${sl:-(not set)}${sl:+%}"
+    echo "Thresholds:"
+    echo "  5h limit:   ${fl:-(not set)}${fl:+%}     (session -> global)"
+    echo "  7d limit:   ${sl:-(not set)}${sl:+%}     (session -> global)"
+    echo "  cost limit: ${cl:+\$}${cl:-(not set)}     (this session only)"
     echo ""
     echo "Current usage:"
-    if [[ -f "$RATE_FILE" ]] && command -v jq >/dev/null 2>&1; then
-        local five seven ts
-        IFS=$'\t' read -r five seven ts < <(jq -r '.rate_limits as $r | [$r.five_hour.used_percentage // "?", $r.seven_day.used_percentage // "?", .ts] | @tsv' "$RATE_FILE" 2>/dev/null)
-        echo "  5h used: ${five}%"
-        echo "  7d used: ${seven}%"
-        if [[ -n "$ts" && "$ts" != "null" ]]; then
-            local age=$(( $(date +%s) - ${ts%.*} ))
-            echo "  snapshot age: ${age}s$( (( age > STALE_SECONDS )) && echo ' (STALE — guard fails open)')"
+    if [[ -f "$STATE_FILE" ]]; then
+        local now; now="$(date +%s)"
+        local five seven gepoch cost sepoch
+        five="$(cfg_get global.used-5h)"
+        seven="$(cfg_get global.used-7d)"
+        gepoch="$(cfg_get global.epoch)"
+        cost="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.used-usd")"
+        sepoch="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.epoch")"
+
+        echo "  5h used:   ${five:-?}%$(age_note "$gepoch" "$now")"
+        echo "  7d used:   ${seven:-?}%$(age_note "$gepoch" "$now")"
+        if [[ "$cost" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "  cost:      ~\$${cost} (approx, this session)$(age_note "$sepoch" "$now")"
+        else
+            echo "  cost:      (none this session)"
+        fi
+        # No quota snapshot at all means this plan has no 5h/7d quota to report —
+        # set a cost limit instead. (It can also just mean the first response
+        # hasn't carried them yet, so phrase it as a hint, not a fact.)
+        if [[ -z "$gepoch" ]]; then
+            echo ""
+            echo "  Note: no 5h/7d usage reported — if your plan has no usage quota, use a cost limit (/limit-usage cost=5)."
         fi
     else
         echo "  (no snapshot yet — run install and let one response go by)"
     fi
-    echo ""
-    local orig
-    orig="$(cfg_get "global.orig-statusline")"
-    if [[ -z "$orig" ]]; then
-        echo "statusLine wrapper: not installed (run /limit-usage-setup install)"
-    elif [[ "$orig" == "$NO_ORIG" ]]; then
-        echo "statusLine wrapper: installed (no original to restore)"
-    else
-        echo "statusLine wrapper: installed (original saved: ${orig})"
-    fi
+    return 0
 }
 
-# install/uninstall print machine-readable plans; the skill applies the
-# settings.json edit after user consent (the plugin never writes it directly).
+# install/uninstall manage only the wrapper copy under CLAUDE_PLUGIN_DATA. The
+# setup skill owns settings.json: it wraps the current statusLine.command on
+# install and strips the wrapper back off on uninstall. We deliberately do NOT
+# remember the original command — the skill reads the live command and unwraps
+# it, so a statusLine the user edited after install is respected.
 
 install() {
-    local orig="${1:-}"
-
-    if [[ "$orig" == *"statusline-wrapper.sh"* ]]; then
-        echo "ALREADY_WRAPPED"
-        echo "current: $orig"
-        return
-    fi
-
-    # statusLine can't expand ${CLAUDE_PLUGIN_ROOT}, and the cache path is
-    # versioned (breaks on update). Copy the wrapper into CLAUDE_PLUGIN_DATA —
-    # a version-stable dir — and bake that path. Re-run install after an update
-    # to refresh the copy.
+    # Copy the wrapper into CLAUDE_PLUGIN_DATA (a version-stable dir) and print
+    # its path. statusLine can't expand ${CLAUDE_PLUGIN_ROOT}, and the cache path
+    # is versioned (breaks on update), so the skill bakes THIS path into
+    # settings.json. Re-run install after an update to refresh the copy.
     local src="${CLAUDE_PLUGIN_ROOT:-}/bin/statusline-wrapper.sh"
     if [[ -z "${CLAUDE_PLUGIN_DATA:-}" || ! -f "$src" ]]; then
         echo "ERROR: CLAUDE_PLUGIN_DATA unset or wrapper not found at ${src}" >&2
@@ -240,41 +379,31 @@ install() {
     cp "$src" "$wrapper"
     chmod +x "$wrapper"
 
-    if [[ -n "$orig" ]]; then
-        git config -f "$CONFIG_FILE" "global.orig-statusline" "$orig"
-        # Single-quote orig for the shell, escaping any embedded quotes.
-        echo "before: $orig"
-        echo "after:  ${wrapper} '${orig//\'/\'\\\'\'}'"
-    else
-        git config -f "$CONFIG_FILE" "global.orig-statusline" "$NO_ORIG"
-        echo "before: (none)"
-        echo "after:  ${wrapper}"
-    fi
+    # Migration: drop any pre-unification snapshot files. They are never read by
+    # this guard; leaving them only risks confusing a future reader and keeps the
+    # stale-wrapper warning firing. (Thresholds in cc-limit-usage.conf are kept.)
+    for f in "${LEGACY_FILES[@]}"; do rm -f "$f" 2>/dev/null || true; done
+
+    echo "WRAPPER_PATH"
+    echo "$wrapper"
 }
 
 uninstall() {
-    local orig
-    orig="$(cfg_get "global.orig-statusline")"
-    git config -f "$CONFIG_FILE" --unset "global.orig-statusline" 2>/dev/null || true
-    [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]] && rm -f "$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh"
-    if [[ -z "$orig" || "$orig" == "$NO_ORIG" ]]; then
-        echo "RESTORE_REMOVE"
-        echo "(no original statusLine was saved; remove the wrapper command entirely)"
-    else
-        echo "RESTORE_TO"
-        echo "$orig"
-    fi
+    # Only remove the copied wrapper. The skill restores settings.json by
+    # unwrapping the live command. Idempotent: a missing wrapper is fine.
+    [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]] && rm -f "$CLAUDE_PLUGIN_DATA/statusline-wrapper.sh" 2>/dev/null || true
+    echo "WRAPPER_REMOVED"
 }
 
 case "${1:-check}" in
     check)     check ;;
-    set)       shift; set_limit "$@" ;;
-    clear)     clear_limits ;;
-    status)    status ;;
-    install)   shift; install "$@" ;;
+    set)       gc_sessions; warn_if_stale_wrapper; shift; set_limit "$@" ;;
+    clear)     gc_sessions; warn_if_stale_wrapper; clear_limits ;;
+    status)    gc_sessions; warn_if_stale_wrapper; status ;;
+    install)   install ;;
     uninstall) uninstall ;;
     *)
-        echo "Usage: $0 {check|set 5h|7d N [--global]|clear|status|install <cmd>|uninstall}" >&2
+        echo "Usage: $0 {check|set 5h|7d|cost N [--global]|clear|status|install|uninstall}" >&2
         exit 1
         ;;
 esac
