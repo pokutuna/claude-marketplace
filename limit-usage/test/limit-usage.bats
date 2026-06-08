@@ -91,7 +91,7 @@ assert_denied_with() {
   guard S set 5h 80 >/dev/null
   wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":82,"resets_at":1780417800}}}'
   run check S
-  assert_denied_with "5h usage 82%"
+  assert_denied_with "5h usage 82.00% >= limit 80.00%"
 }
 
 @test "5h under the limit allows" {
@@ -105,7 +105,7 @@ assert_denied_with() {
   guard S set 5h 80 7d 90 >/dev/null
   wrap '{"session_id":"S","rate_limits":{"seven_day":{"used_percentage":95,"resets_at":1780999999}}}'
   run check S
-  assert_denied_with "7d usage 95%"
+  assert_denied_with "7d usage 95.00% >= limit 90.00%"
 }
 
 # --- check: cost ---
@@ -152,7 +152,7 @@ assert_denied_with() {
   # SA's response carries the account-wide rate snapshot (-> [global]).
   wrap '{"session_id":"SA","rate_limits":{"five_hour":{"used_percentage":85,"resets_at":1780417800}},"cost":{"total_cost_usd":1.0}}'
   run check SB
-  assert_denied_with "5h usage 85%"
+  assert_denied_with "5h usage 85.00% >= limit 80.00%"
 }
 
 @test "session 5h limit is checked against global used-5h (cross-scope, global epoch)" {
@@ -160,7 +160,7 @@ assert_denied_with() {
   guard S set 5h 80 >/dev/null
   wrap '{"session_id":"OTHER","rate_limits":{"five_hour":{"used_percentage":90}}}'
   run check S
-  assert_denied_with "5h usage 90%"
+  assert_denied_with "5h usage 90.00% >= limit 80.00%"
 }
 
 # --- fail-open ---
@@ -245,8 +245,18 @@ assert_denied_with() {
 @test "status shows rate usage and no cost hint when rate is present" {
   wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":42}}}'
   run guard S status
-  [[ "$output" == *"5h used:   42%"* ]]
+  [[ "$output" == *"5h used:   42.00%"* ]]
   [[ "$output" != *"Note: no 5h/7d usage reported"* ]]
+}
+
+@test "status rounds noisy floats: cost to cents, percentages to 2 decimals" {
+  # The captured figures carry full float precision; status must not echo it raw.
+  wrap '{"session_id":"S","cost":{"total_cost_usd":38.52632265000001},"rate_limits":{"five_hour":{"used_percentage":26.7531},"seven_day":{"used_percentage":48.2}}}'
+  run guard S status
+  [[ "$output" == *"cost:      ~\$38.53"* ]]
+  [[ "$output" != *"38.52632265"* ]]
+  [[ "$output" == *"5h used:   26.75%"* ]]
+  [[ "$output" == *"7d used:   48.20%"* ]]
 }
 
 # --- garbage collection of ended sessions ---

@@ -223,7 +223,7 @@ deny() {
         # it can be approximate — flag it with `~`.
         reason="$(printf 'Session cost ~$%.2f >= limit $%.2f. Stopped by limit-usage.' "$used" "$limit")"
     else
-        reason="$(printf '%s usage %.0f%% >= limit %.0f%%. Stopped by limit-usage.%s' "$label" "$used" "$limit" "$resets")"
+        reason="$(printf '%s usage %.2f%% >= limit %.2f%%. Stopped by limit-usage.%s' "$label" "$used" "$limit" "$resets")"
     fi
     jq -nc --arg r "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $r}}'
 }
@@ -339,10 +339,18 @@ status() {
         cost="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.used-usd")"
         sepoch="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.epoch")"
 
-        echo "  5h used:   ${five:-?}%$(age_note "$gepoch" "$now")"
-        echo "  7d used:   ${seven:-?}%$(age_note "$gepoch" "$now")"
-        if [[ "$cost" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-            echo "  cost:      ~\$${cost} (approx, this session)$(age_note "$sepoch" "$now")"
+        # Round for display to match deny(): percentages to 2 decimals, cost to
+        # cents. The captured figures carry full float precision (e.g.
+        # 38.52632265000001), which is noise here. Non-numeric (missing) falls
+        # through to "?".
+        local num='^[0-9]+([.][0-9]+)?$'
+        local five_disp="${five:-?}" seven_disp="${seven:-?}"
+        [[ "$five" =~ $num ]]  && five_disp="$(printf '%.2f' "$five")"
+        [[ "$seven" =~ $num ]] && seven_disp="$(printf '%.2f' "$seven")"
+        echo "  5h used:   ${five_disp}%$(age_note "$gepoch" "$now")"
+        echo "  7d used:   ${seven_disp}%$(age_note "$gepoch" "$now")"
+        if [[ "$cost" =~ $num ]]; then
+            echo "  cost:      ~$(printf '$%.2f' "$cost") (approx, this session)$(age_note "$sepoch" "$now")"
         else
             echo "  cost:      (none this session)"
         fi
