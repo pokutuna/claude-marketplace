@@ -23,26 +23,33 @@ The wrapper captures usage from the statusLine stream (zero metering cost) so th
 $ARGUMENTS
 </ARGUMENTS>
 
-Pick `install` or `uninstall` from the argument. Run guard.sh with the data dir (where the wrapper copy lives):
+Pick `install` or `uninstall`. `guard.sh` only manages the wrapper copy in the data dir; **this skill owns settings.json** — it wraps the live `statusLine.command` on install and strips the wrapper back off on uninstall. We never store the original, so a statusLine the user edited after install is still respected.
+
+The **Edit tool's own permission prompt is the single consent point** — never add a separate confirmation question. Before each Edit, just state in one line which file and the before → after of `statusLine.command` (the display is unchanged; `uninstall` reverses install).
+
+### Finding the settings file (both flows)
+
+Never hardcode `~/.claude/settings.json` — find the file that actually defines `statusLine`:
+- User scope is `$CLAUDE_CONFIG_DIR/settings.json` (else `~/.claude/settings.json`). Read `$CLAUDE_CONFIG_DIR` directly — it does **not** move `CLAUDE.md`, so don't infer the dir from the CLAUDE.md path in your context.
+- It may instead be the project `.claude/settings.json`. Use the session context to pick; read the candidate(s) and edit the one defining `statusLine` (or the user-scope file if none does and the user wants it global).
+- **If that file is a symlink, resolve it with `realpath` and edit the real file** — editing the link replaces it with a plain file and silently detaches it from a dotfiles repo. Tell the user the real path (e.g. `~/dotfiles/claude/settings.json`); for a dotfiles symlink that's a repo change they'll want to commit.
+
+### install
+
+1. `guard.sh install` → copies the wrapper into the data dir (a version-stable path that survives updates, since statusLine can't expand `${CLAUDE_PLUGIN_ROOT}`), drops any pre-unification snapshot files, and prints `WRAPPER_PATH` then the baked path on the next line. Capture it as `<wrapper>`.
+2. Read the current `statusLine.command`. **If it already contains `statusline-wrapper.sh` it's wrapped** — step 1 already refreshed the copy, so say it's done and stop (no settings edit unless the wrapper path itself changed).
+3. **Edit** the command to `<wrapper> '<current command>'` — single-quote the current command, escaping embedded `'` as `'\''`; if there was none, the command is just `<wrapper>`. Keep `type`/`padding`; add a `statusLine` block with `"type": "command"` if absent.
+4. Guard activates after the next response (the first statusLine refresh writes the snapshot). Set thresholds with `/limit-usage set`.
+
+### uninstall
+
+1. `guard.sh uninstall` → removes the wrapper copy and prints `WRAPPER_REMOVED` (idempotent).
+2. Find the file whose `statusLine.command` contains `statusline-wrapper.sh`.
+3. **Unwrap and Edit.** The wrapped form is `<wrapper> '<original>'`: strip the leading `<…>statusline-wrapper.sh ` and the surrounding single quotes (un-escape `'\''` → `'`). If an `<original>` remains, restore it; if nothing remains, there was no original → remove the `statusLine` block.
+
+`guard.sh` for either flow:
 `CLAUDE_PLUGIN_DATA=${CLAUDE_PLUGIN_DATA} CLAUDE_PLUGIN_ROOT=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/bin/guard.sh <install|uninstall>`
-
-## install (the Edit tool's permission prompt is the single consent point — don't add a second)
-
-1. **Locate the settings file that actually holds `statusLine` for this session — never hardcode `~/.claude/settings.json`.** Determine the user-scope config dir, then find which settings file defines `statusLine`:
-   - User-scope settings live at `$CLAUDE_CONFIG_DIR/settings.json` when `CLAUDE_CONFIG_DIR` is set, otherwise `~/.claude/settings.json`. (Note: `CLAUDE_CONFIG_DIR` does **not** move `CLAUDE.md`, so don't infer the config dir from the CLAUDE.md path in your context — read `$CLAUDE_CONFIG_DIR` directly, e.g. `echo "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"`.)
-   - `statusLine` may instead be in the project `.claude/settings.json`. The session reminders/context tell you which config dir and project you're in — use those plus the env var to pick the right file. Read the candidate(s) and edit the one that actually defines `statusLine` (or the user-scope file if none does and the user wants it global).
-   - **If the chosen file is a symlink, resolve it with `realpath` and edit the real file** — editing the link in place would replace it with a plain file and silently detach it from a dotfiles repo. Tell the user which real path you'll edit (e.g. `~/dotfiles/claude/settings.json`); for a dotfiles symlink that means their repo changes and they'll want to commit it.
-2. In that file, read the current `statusLine.command` (empty if there is no `statusLine` yet).
-3. `guard.sh install '<current statusLine.command>'` (empty string if none). This copies the wrapper into the plugin's data dir (a version-stable path that survives updates, since statusLine can't expand `${CLAUDE_PLUGIN_ROOT}`) and prints a before/after plan whose `after:` points at that copy. On `ALREADY_WRAPPED`, say it's done and stop.
-4. State the change in one line — which file you'll edit and the before → after of `statusLine.command` (display is unchanged; the original is saved and restorable via `uninstall`) — then **Edit** the resolved file's `statusLine.command` to the `after:` value, keeping `type` and `padding`. Don't ask a separate confirmation question; the Edit tool's own permission prompt is the consent point (if it's blocked, the user gets asked there).
-5. Guard activates after the next response (first statusLine refresh writes the snapshot). Set thresholds with `/limit-usage set`.
-
-## uninstall
-
-1. `guard.sh uninstall` → prints `RESTORE_TO` + original, or `RESTORE_REMOVE`, and removes the wrapper copy from the data dir.
-2. Locate the settings file the same way as install step 1 — the one whose `statusLine.command` points at the wrapper (`$CLAUDE_CONFIG_DIR/settings.json` vs `~/.claude/settings.json` vs project `.claude/settings.json`); follow a symlink to its real path.
-3. State the change in one line, then **Edit** the resolved file: `RESTORE_TO` → set the command back; `RESTORE_REMOVE` → remove the wrapper. No separate confirmation question — the Edit tool's permission prompt is the consent point.
 
 ## Notes
 
-- After updating the plugin, re-run `install` to refresh the wrapper copy in the data dir (the baked statusLine path stays the same, so no settings.json edit is needed — just re-copy).
+- After updating the plugin, re-run `install` to refresh the wrapper copy in the data dir (the baked statusLine path stays the same, so no settings.json edit is needed — just re-copy). If `/limit-usage status` warns the wrapper looks outdated, this is the fix.
