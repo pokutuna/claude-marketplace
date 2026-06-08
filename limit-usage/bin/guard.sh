@@ -281,7 +281,8 @@ set_limit() {
     mkdir -p "$STATE_DIR"
     local out=()
     for (( i = 0; i < ${#suffixes[@]}; i++ )); do
-        git config -f "$STATE_FILE" "${section}.limit-${suffixes[i]}" "${vals[i]}"
+        git config -f "$STATE_FILE" "${section}.limit-${suffixes[i]}" "${vals[i]}" \
+            || { echo "Error: failed to write threshold (${section}.limit-${suffixes[i]})" >&2; exit 1; }
         if [[ "${suffixes[i]}" == usd ]]; then
             out+=("${wins[i]}=\$${vals[i]}")
         else
