@@ -17,6 +17,16 @@ The natural pattern an agent reaches for is "open the diff viewer, wait for the 
 
 The right answer is to **not use signal-based retrieval at all**. difit exposes an HTTP API (`comment get` / `comment add`) that reads and writes the running server's state directly. This plugin pushes the agent toward that API for the entire review loop, so the server can stay up for as long as the user wants and shutdown becomes a non-event.
 
+## Launch modes
+
+A mode argument decides what the agent attaches at launch:
+
+- **`open`** *(default)* — open the diff with no comments. The human reviews and writes comments; the agent only reads them back.
+- **`explain`** — the agent annotates its *own* change (what / why / needs-judgement).
+- **`review`** — the agent posts findings on *human-written* code.
+
+The rest of the flow is the same in every mode: human comments in the browser → agent picks them up → agent replies inline, all without restarting difit.
+
 ## Use cases
 
 - **AI explains its own code to a human reviewer.** After the agent makes changes, it opens difit and attaches line comments saying *what* it did, *why*, and *which parts need human judgement*. The human reviews in the browser and replies inline. The agent picks up replies and addresses them.

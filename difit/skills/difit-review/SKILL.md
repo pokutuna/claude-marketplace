@@ -1,6 +1,6 @@
 ---
 name: difit-review
-description: Round-trip code review through difit. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", or "review this PR locally".
+description: Round-trip code review through difit. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", or "review this PR locally". Launch mode arg — "open" (default, no comments at launch), "explain" (AI annotates its own change), "review" (AI posts findings on human code).
 metadata:
   author: pokutuna
 allowed-tools:
@@ -12,14 +12,21 @@ allowed-tools:
 
 # difit-review
 
-Open a diff in [difit](https://github.com/yoshiko-pg/difit) (a local diff viewer) with AI-authored line comments preloaded, then loop with the human reviewer over difit's HTTP API: the human writes replies in the browser, you read them while the server keeps running, and answer back with `difit comment add`.
+Open a diff in [difit](https://github.com/yoshiko-pg/difit) (a local diff viewer) and loop with the human reviewer over difit's HTTP API: comments are exchanged in the browser, you read them while the server keeps running, and answer back with `difit comment add`.
 
-Two symmetric use cases, same flow:
+## Launch modes — first word of `$ARGUMENTS`
 
-- **AI explains its own code to a human reviewer.** After you (the AI) finish a change, open difit and attach line comments that say "here's what I did", "why I did it this way", and "this part needs your judgement".
-- **AI reviews human-written code.** Same flow, but the comments are findings ("this branch can throw NPE", "consider X") instead of explanations.
+The mode decides only what you attach **at launch**. The rest of the loop (human comments → Step 2 pick-up → Step 3 reply) is identical in every mode.
 
-A single difit session can go both ways — human asks a question, AI answers, AI raises a new finding, etc.
+| Mode | Arg | At launch you attach… |
+|---|---|---|
+| **Open only** *(default)* | `open` / `just` / `view` / none | **Nothing.** Just `difit <target> --keep-alive`. The human drives. |
+| **Explain** | `explain` | Comments explaining your own change ("here's what I did", "why this way", "needs your judgement"). |
+| **Review** | `review` | Findings on human-written code ("this branch can throw NPE", "consider X"). |
+
+Default to `open`. Attach comments at launch only when the user asked for `explain` or `review` (explicitly or in plain words like "explain your changes" / "review my code"). The word "review" alone is **not** an `explain`/`review` trigger — "I want to review this PR" means *the human* reviews, so it stays `open`.
+
+If no target is given, pick by context: you just edited files → `difit .` (uncommitted); reviewing a PR / branch → `difit HEAD main --merge-base`; a single finished commit → `difit` (HEAD). If still ambiguous, ask before launching.
 
 ## Core principle: HTTP API, not signals
 
@@ -30,12 +37,24 @@ difit lets you exchange comments **while the server keeps running** via its HTTP
 
 `difit` must be on `$PATH` (`npm i -g difit`). If it isn't, stop and tell the user — no fallback.
 
-## Step 1 — Open difit with your initial comments
+## Step 1 — Open difit
+
+### Open-only mode (`open`)
+
+Launch difit with **no `--comment` arguments at all**. Don't attach explanations or findings — the human is going to drive.
+
+```bash
+difit <target> [compare-with] --keep-alive
+```
+
+Then tell the user the URL and that you'll pick up their comments when they're ready. Skip straight to Step 2 when they signal done.
+
+### Explain / Review modes (`explain` / `review`)
 
 Decide what to attach as line comments before launching. Cover, in order of priority:
 
 1. Points where you specifically want human judgement ("not sure if this matches the convention you want").
-2. The intent / why behind non-obvious changes.
+2. The intent / why behind non-obvious changes (explain mode), or the finding and its impact (review mode).
 3. A short summary of each substantial change ("extracted parseFoo from bar(); behaviour preserved").
 
 Set `author: "ai"` on every comment so AI-authored comments are distinguishable both programmatically and in the browser UI (difit renders `author` as a label). Write the body in the user's language.

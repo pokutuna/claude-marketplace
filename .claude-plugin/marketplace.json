@@ -106,7 +106,7 @@
     },
     {
       "name": "difit",
-      "description": "Round-trip code review with difit. Loads AI-authored line comments at launch and exchanges replies with the human over difit's HTTP API while the server keeps running.",
+      "description": "Round-trip code review with difit. Opens the diff in one of three launch modes (open / explain / review) and exchanges comments with the human over difit's HTTP API while the server keeps running.",
       "source": "./difit",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/difit"
     },
