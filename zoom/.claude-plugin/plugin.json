@@ -1,7 +1,7 @@
 {
   "name": "zoom",
-  "version": "0.1.2",
-  "description": "Extract transcripts from Zoom recording share pages",
+  "version": "0.2.0",
+  "description": "Extract transcripts and download videos from Zoom recording share pages",
   "author": {
     "name": "pokutuna"
   },
@@ -10,6 +10,9 @@
     "transcript",
     "recording",
     "vtt",
+    "video",
+    "download",
+    "mp4",
     "playwright"
   ]
 }

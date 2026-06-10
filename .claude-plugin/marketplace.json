@@ -94,7 +94,7 @@
     },
     {
       "name": "zoom",
-      "description": "Extract transcripts from Zoom recording share pages via Playwright",
+      "description": "Extract transcripts and download videos from Zoom recording share pages via Playwright",
       "source": "./zoom",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/zoom"
     },

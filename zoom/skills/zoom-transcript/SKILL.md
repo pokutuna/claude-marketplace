@@ -25,7 +25,7 @@ If neither is available, tell the user to install one:
 ## Required User Input
 
 Ask the user for:
-1. **Recording share URL** (e.g. `https://us06web.zoom.us/rec/share/...`)
+1. **Recording share URL** (e.g. `https://<region>.zoom.us/rec/share/...`)
 2. **Passcode** (if the recording is passcode-protected)
 3. **Output file path** (where to save the VTT transcript)
 
