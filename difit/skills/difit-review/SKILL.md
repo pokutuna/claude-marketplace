@@ -76,7 +76,7 @@ Target conventions:
 
 Comment payload notes:
 
-- `type` must be `thread` for new top-level threads, `reply` to add to an existing one (rare at launch time).
+- `type` must be `thread` for new top-level threads, `reply` to add to an existing one (rare at launch time; `reply` needs difit >= 5.0.2 — see Step 3).
 - `position.side`: `new` for lines on the target side, `old` for lines only on the deleted side.
 - Use `position.line: {start, end}` for ranges.
 - **Never put secrets, tokens, or credentials in `--comment` arguments** — they go on the command line.
@@ -124,6 +124,12 @@ difit comment add --port <port> \
   '{"type":"thread","author":"ai","filePath":"src/foo.ts","position":{"side":"new","line":99},"body":"Realised this branch needs a unit test. Adding one."}'
 ```
 
+`difit comment add` takes **one JSON object per invocation** — send multiple comments as separate sequential calls.
+
+**`type: "reply"` requires difit >= 5.0.2.** On 5.0.1 and earlier, the browser's localStorage sync replaces the server's threads wholesale, so an imported reply is silently wiped within 10–20 s while a tab is open — even though the import returns `{"success":true}` with an `importId` and empty `warnings`. If `difit --version` reports <= 5.0.1, ask the user to update (`npm i -g difit@latest`), or fall back to sending the reply as a `type: "thread"` at the same `filePath` + `position` with a reply prefix in the body (user's language — e.g. `Reply:` / `返信:`); new threads survive the old client's sync.
+
+**Verify lazily.** No dedicated wait is needed after sending — report to the user right away. But since the import's success response alone doesn't prove persistence, the next time you run `${CLAUDE_PLUGIN_ROOT}/bin/difit-comments <port>` for any reason (the next Step 2 pick-up, or the final fetch before shutdown), also check that your earlier `author: "ai"` messages are still present. If any vanished, you're hitting the pre-5.0.2 wipe — resend via the fallback above and tell the user.
+
 The human sees new threads / replies live in the browser. Then go back to Step 2 when they reply. This is the entire loop — Step 2 ↔ Step 3, indefinitely.
 
 ## Step 4 — Ending the session
@@ -133,11 +139,13 @@ Stop difit when one of these happens:
 1. The user explicitly tells you to close / stop / quit it.
 2. The review loop is clearly over — the user moves on to creating a PR, commits and walks away, or switches to an unrelated task. Don't keep difit running just because no one said to stop.
 
-Before stopping, run `${CLAUDE_PLUGIN_ROOT}/bin/difit-comments <port>` one more time so you've collected the latest replies. Then send `SIGINT` — look up the PID from the port:
+Before stopping, run `${CLAUDE_PLUGIN_ROOT}/bin/difit-comments <port>` one more time so you've collected the latest replies. If this final fetch surfaces human comments you haven't addressed, don't reply in difit (you're shutting down) — carry them into the conversation and address them there. Then send `SIGINT` — look up the PID from the port:
 
 ```bash
-kill -INT "$(lsof -ti :<port>)"
+kill -INT "$(lsof -ti :<port> -sTCP:LISTEN)"
 ```
+
+`-sTCP:LISTEN` is required: while a browser tab is connected, plain `lsof -ti :<port>` also lists the client processes, and the multi-PID expansion makes `kill` fail with "illegal pid".
 
 `SIGINT` only. **Never use plain `kill`, `pkill`, or `kill -9`** — difit only handles `SIGINT` and any other signal discards in-flight state.
 
@@ -147,7 +155,7 @@ There is **no "Finish Review" button** in difit's UI. Do not tell the user to pr
 
 ```json
 {
-  "type": "thread",        // "thread" for a new top-level comment, "reply" to extend an existing one
+  "type": "thread",        // "thread" for a new top-level comment, "reply" to extend an existing one (difit >= 5.0.2 — see Step 3)
   "author": "ai",          // free-form string; "ai" by convention for this skill
   "filePath": "src/x.ts",  // repo-relative path
   "position": {

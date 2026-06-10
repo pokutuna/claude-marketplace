@@ -8,7 +8,7 @@ Plugin for round-trip code review with [difit](https://github.com/yoshiko-pg/dif
   - launch difit with AI-authored line comments preloaded (`--comment` with `author: "ai"` so the human can spot AI comments at a glance via difit's author label),
   - exchange comments with the human over difit's HTTP API **while the server keeps running** — no process kill required, no restart between rounds,
   - distinguish human vs. AI comments by the `author` field,
-  - reply with `difit comment add` using `filePath` + `position` to attach to existing threads.
+  - reply with `difit comment add` using `filePath` + `position` to attach to existing threads (`type: "reply"` requires difit >= 5.0.2 — older clients wipe imported replies, so the skill falls back to same-position threads there), re-checking on later fetches that earlier replies persisted.
 - **`bin/difit-comments`** — a small helper that wraps `GET /api/comments-json` and trims the response to just the fields the agent needs to reply: thread `id`, `filePath`, `position`, `codeSnapshot` (flattened), and `messages: [{author, body}]`. Timestamps, message IDs, and version metadata are dropped so the agent doesn't have to parse around them.
 
 ## Why
