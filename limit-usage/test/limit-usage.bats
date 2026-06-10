@@ -259,6 +259,41 @@ assert_denied_with() {
   [[ "$output" == *"7d used:   48.20%"* ]]
 }
 
+@test "status states the snapshot age once on the Current usage header" {
+  # The age comes from the global (5h/7d) epoch and labels the whole block; the
+  # rows themselves stay clean (no per-line "(Ns)" note).
+  wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":35},"seven_day":{"used_percentage":3}},"cost":{"total_cost_usd":0.31}}'
+  run guard S status
+  [[ "$output" == *"Current usage ("*"s ago):"* ]]
+  [[ "$(echo "$output" | grep -E '^  5h used: ')" != *"s)"* ]]
+}
+
+@test "status shows threshold scope: session, global, and session-over-global" {
+  wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":10}}}'
+  guard S set 5h 80 >/dev/null            # session-only
+  guard S set 7d 90 --global >/dev/null   # global-only
+  guard S set cost 5 >/dev/null           # session (cost is session-only)
+  run guard S status
+  [[ "$output" == *"5h limit:   80% session"* ]]
+  [[ "$output" == *"7d limit:   90% global"* ]]
+  [[ "$output" == *"cost limit: \$5 session"* ]]
+}
+
+@test "status shows a session 5h override sitting on top of a global value" {
+  wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":10}}}'
+  guard S set 5h 70 --global >/dev/null   # global
+  guard S set 5h 90 >/dev/null            # session override
+  run guard S status
+  [[ "$output" == *"5h limit:   90% session; 70% global"* ]]
+}
+
+@test "status shows (not set) for an unset threshold" {
+  wrap '{"session_id":"S","rate_limits":{"five_hour":{"used_percentage":10}}}'
+  run guard S status
+  [[ "$output" == *"5h limit:   (not set)"* ]]
+  [[ "$output" == *"cost limit: (not set)"* ]]
+}
+
 # --- garbage collection of ended sessions ---
 
 @test "set/clear/status GC sessions older than the GC window" {

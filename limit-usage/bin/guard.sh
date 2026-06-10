@@ -74,15 +74,17 @@ format_time() {
     date -r "$1" '+%H:%M' 2>/dev/null || date -d "@$1" '+%H:%M'
 }
 
-# " (12s)" or " (400s, STALE — guard fails open)" for a snapshot timestamp.
-age_note() {
+# " (2s ago)" / " (400s ago, STALE — guard fails open)" for the status header's
+# snapshot timestamp, or "" if it isn't a timestamp. status() reads the snapshot
+# age from the global (5h/7d) epoch; cost age isn't tracked separately.
+age_header() {
     local ts="$1" now="$2"
     [[ "$ts" =~ ^[0-9]+$ ]] || return 0
     local age=$(( now - ts ))
     if (( age > STALE_SECONDS )); then
-        printf ' (%ss, STALE — guard fails open)' "$age"
+        printf ' (%ss ago, STALE — guard fails open)' "$age"
     else
-        printf ' (%ss)' "$age"
+        printf ' (%ss ago)' "$age"
     fi
 }
 
@@ -318,26 +320,32 @@ clear_limits() {
 }
 
 status() {
-    local fl sl cl
-    fl="$(resolve_limit 5h)"
-    sl="$(resolve_limit 7d)"
-    cl="$(resolve_limit usd)"
     echo "limit-usage status"
     echo ""
+
+    # Thresholds: 5h/7d can be set per-session and/or globally (session wins;
+    # see resolve_limit), cost is session-only. Show each scope's own value so
+    # it's clear where a limit lives and which one is in effect.
+    local s5 g5 s7 g7 sc
+    if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+        s5="$(cfg_get "session.${CLAUDE_SESSION_ID}.limit-5h")"
+        s7="$(cfg_get "session.${CLAUDE_SESSION_ID}.limit-7d")"
+        sc="$(cfg_get "session.${CLAUDE_SESSION_ID}.limit-usd")"
+    fi
+    g5="$(cfg_get global.limit-5h)"
+    g7="$(cfg_get global.limit-7d)"
     echo "Thresholds:"
-    echo "  5h limit:   ${fl:-(not set)}${fl:+%}     (session -> global)"
-    echo "  7d limit:   ${sl:-(not set)}${sl:+%}     (session -> global)"
-    echo "  cost limit: ${cl:+\$}${cl:-(not set)}     (this session only)"
+    echo "  5h limit:   $(threshold_line "$s5" "$g5" %)"
+    echo "  7d limit:   $(threshold_line "$s7" "$g7" %)"
+    echo "  cost limit: $(threshold_line "$sc" "" '$')"
     echo ""
-    echo "Current usage:"
     if [[ -f "$STATE_FILE" ]]; then
         local now; now="$(date +%s)"
-        local five seven gepoch cost sepoch
+        local five seven gepoch cost
         five="$(cfg_get global.used-5h)"
         seven="$(cfg_get global.used-7d)"
         gepoch="$(cfg_get global.epoch)"
         cost="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.used-usd")"
-        sepoch="$(cfg_get "session.${CLAUDE_SESSION_ID:-_}.epoch")"
 
         # Round for display to match deny(): percentages to 2 decimals, cost to
         # cents. The captured figures carry full float precision (e.g.
@@ -347,10 +355,15 @@ status() {
         local five_disp="${five:-?}" seven_disp="${seven:-?}"
         [[ "$five" =~ $num ]]  && five_disp="$(printf '%.2f' "$five")"
         [[ "$seven" =~ $num ]] && seven_disp="$(printf '%.2f' "$seven")"
-        echo "  5h used:   ${five_disp}%$(age_note "$gepoch" "$now")"
-        echo "  7d used:   ${seven_disp}%$(age_note "$gepoch" "$now")"
+
+        # One snapshot age for the whole block, on the header. We use the global
+        # (5h/7d) epoch; cost lands in the same snapshot, so its age isn't worth
+        # tracking separately.
+        echo "Current usage$(age_header "$gepoch" "$now"):"
+        echo "  5h used:   ${five_disp}%"
+        echo "  7d used:   ${seven_disp}%"
         if [[ "$cost" =~ $num ]]; then
-            echo "  cost:      ~$(printf '$%.2f' "$cost") (approx, this session)$(age_note "$sepoch" "$now")"
+            echo "  cost:      ~$(printf '$%.2f' "$cost") (approx, this session)"
         else
             echo "  cost:      (none this session)"
         fi
@@ -362,9 +375,29 @@ status() {
             echo "  Note: no 5h/7d usage reported — if your plan has no usage quota, use a cost limit (/limit-usage cost=5)."
         fi
     else
+        echo "Current usage:"
         echo "  (no snapshot yet — run install and let one response go by)"
     fi
     return 0
+}
+
+# One threshold row, listing whichever scopes hold a value as
+# "<val> <scope>" joined by "; " (e.g. "90% session; 70% global"). Takes the
+# session value, the global value (empty for cost), and the unit ('%' or '$').
+# Session is listed first since it wins; an absent scope is omitted; nothing set
+# prints "(not set)".
+threshold_line() {
+    local sval="$1" gval="$2" unit="$3" fmt parts=()
+    [[ "$unit" == '$' ]] && fmt='$%s' || fmt='%s%%'
+    [[ -n "$sval" ]] && parts+=("$(printf "$fmt" "$sval") session")
+    [[ -n "$gval" ]] && parts+=("$(printf "$fmt" "$gval") global")
+    if (( ${#parts[@]} == 0 )); then
+        printf '(not set)'
+    else
+        local out="${parts[0]}" i
+        for (( i = 1; i < ${#parts[@]}; i++ )); do out+="; ${parts[i]}"; done
+        printf '%s' "$out"
+    fi
 }
 
 # install/uninstall manage only the wrapper copy under CLAUDE_PLUGIN_DATA. The
