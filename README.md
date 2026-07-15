@@ -49,6 +49,7 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [toggle-plugin](./toggle-plugin/) | Toggle plugins enabled/disabled per project |
 | [queue](./queue/) | Task queue — queue prompts with :qu, auto-feed on task completion |
 | [github-copilot](./github-copilot/) | GitHub Copilot CLI integration — second AI opinion and PR review requests |
+| [codex](./codex/) | OpenAI Codex CLI integration for autonomous second opinions and code review |
 | [octave-notification](./octave-notification/) | Musical scale notification sounds per tmux window (3 octaves, 21 notes) |
 | [zoom](./zoom/) | Extract transcripts from Zoom recording share pages via Playwright |
 | [pushover-notify](./pushover-notify/) | Send Pushover push notifications when Claude needs attention (display-aware on macOS) |

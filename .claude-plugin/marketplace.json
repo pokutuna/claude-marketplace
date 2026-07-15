@@ -87,6 +87,12 @@
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/github-copilot"
     },
     {
+      "name": "codex",
+      "description": "OpenAI Codex CLI integration for autonomous second opinions and code review",
+      "source": "./codex",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/codex"
+    },
+    {
       "name": "octave-notification",
       "description": "Play musical scale notification sounds based on tmux window index",
       "source": "./octave-notification",

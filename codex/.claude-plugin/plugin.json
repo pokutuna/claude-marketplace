@@ -1,0 +1,16 @@
+{
+  "name": "codex",
+  "version": "0.2.5",
+  "description": "OpenAI Codex CLI integration for autonomous second opinions and code review",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "review",
+    "code-review",
+    "second-opinion"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/codex"
+}
