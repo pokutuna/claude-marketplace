@@ -84,6 +84,8 @@ $ARGUMENTS
 
 冒頭で確定した `RESULT_FILE` と `TRANSCRIPT_FILE` をそのまま wrapper script に文字列で指定する。Bash ツールの timeout は 300000ms (5分) に設定する。
 
+`codex exec` は PROMPT 引数が省略・空文字列になると stdin からの入力待ちに切り替わり、ハングする。ヒアドキュメントで組み立てる `<依頼内容をここに記述>` の部分が必ず空でない実質的な内容に展開されていることを確認してから実行する。
+
 ```bash
 bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh "<冒頭で確定した RESULT_FILE>" "<冒頭で確定した TRANSCRIPT_FILE>" \
   --sandbox workspace-write -c 'approval_policy="on-request"' \
@@ -102,6 +104,8 @@ PROMPT
 完了した場合は `RESULT_FILE` を Read して最終回答を表示し、Codex CLI による結果である旨を短く注記する。末尾に保存先パス (`RESULT_FILE` と `TRANSCRIPT_FILE`) を明示する。
 
 timeout した場合は Codex プロセスを kill してはならない。`AskUserQuestion` で待機するか確認し、待つ場合は `TRANSCRIPT_FILE` を定期的に Read して進行状態を確認し、`RESULT_FILE` が出力されたら最終回答を読む。待たない場合は、後で両方のファイルを読めることをパスとともに伝える。
+
+バックグラウンドで実行中の Codex プロセスを `ps` などで確認する場合、プロセス名の一致だけで「自分が起動したものだ」と判断してはならない。`ps -o pid,ppid,tty,lstart,command` で `ppid` (今回のシェルの子か)、`lstart` (今回のセッション開始後に起動したか)、`tty` (無人実行か別の対話セッションか) を確認したうえで対象を特定する。
 
 Codex CLI 自体が中断・クラッシュして最終回答が保存されなかった場合は、`TRANSCRIPT_FILE` に書き出し済みのイベントを読んで状態を確認する。保存セッションは `codex exec resume --last "<元の依頼を継続して完了してください>"` で再開できる。現在の Codex CLI の `resume` サブコマンドには `--sandbox` がないため、元のセッションの権限設定で再開される。wrapper script を使い、同じ `RESULT_FILE` と `TRANSCRIPT_FILE` を指定する。
 
