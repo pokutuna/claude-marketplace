@@ -6,9 +6,9 @@ metadata:
   author: pokutuna
   compatibility: Codex CLI installed and authenticated
 allowed-tools:
-  - Bash(codex exec *)
   - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh)
   - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh *)
+  - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/wait-codex.sh *)
   - Read
   - AskUserQuestion
 ---
@@ -24,6 +24,8 @@ PATHS = !`bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh`
 
 上記出力の 1 行目が RESULT_FILE (`.md`)、2 行目が TRANSCRIPT_FILE (`.jsonl`)。
 以降の手順では上記パスを `--output-last-message` と実行イベントの保存先に指定し、ユーザーへの案内にも使う。
+
+wrapper script は TRANSCRIPT_FILE から派生する2つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)。
 
 Codex は Auto 相当の次のオプションで必ず起動する。
 
@@ -44,7 +46,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh "<上記 RESULT_FILE>" "<上記 TR
 
 `--dangerously-bypass-approvals-and-sandbox` と `--sandbox danger-full-access` は使用してはならない。
 
-`RESULT_FILE` と `TRANSCRIPT_FILE` は `$TMPDIR`（未設定時は `/tmp`）配下のタイムスタンプ付きファイルである。前者には最終回答、後者には stdout/stderr の JSONL イベントを逐次保存する。Copilot CLI の `--share` のように 1 個の Markdown ファイルへセッション全体をまとめる形式ではない。
+`RESULT_FILE` と `TRANSCRIPT_FILE` は `$TMPDIR`（未設定時は `/tmp`）配下のタイムスタンプ付きファイルである。前者には最終回答、後者には stdout の JSONL イベントを逐次保存する。Copilot CLI の `--share` のように 1 個の Markdown ファイルへセッション全体をまとめる形式ではない。
 
 <ARGUMENTS>
 $ARGUMENTS
@@ -82,7 +84,7 @@ $ARGUMENTS
 
 モデルと reasoning effort は、既定で `--model "gpt-5.6-luna" -c 'model_reasoning_effort="xhigh"'` を追加する。`--model <model>` または `--effort <level>` が指定されたときは、それぞれの既定値を置き換える。`-y` / `--yes`、`--model`、`--effort` 指定は Codex への依頼本文に含めない。
 
-冒頭で確定した `RESULT_FILE` と `TRANSCRIPT_FILE` をそのまま wrapper script に文字列で指定する。Bash ツールの timeout は 300000ms (5分) に設定する。
+冒頭で確定した `RESULT_FILE` と `TRANSCRIPT_FILE` をそのまま wrapper script に文字列で指定する。wrapper は codex exec をプロセスグループから切り離して background 起動し、codex の PID を1行出力してすぐに戻る。起動コマンド自体は数秒で返るため、通常の Bash ツール timeout で問題ない。
 
 `codex exec` は PROMPT 引数が省略・空文字列になると stdin からの入力待ちに切り替わり、ハングする。ヒアドキュメントで組み立てる `<依頼内容をここに記述>` の部分が必ず空でない実質的な内容に展開されていることを確認してから実行する。
 
@@ -101,13 +103,21 @@ PROMPT
 
 ### 4. Present results
 
-完了した場合は `RESULT_FILE` を Read して最終回答を表示し、Codex CLI による結果である旨を短く注記する。末尾に保存先パス (`RESULT_FILE` と `TRANSCRIPT_FILE`) を明示する。
+wrapper 起動後、codex は background で実行され続けるので、完了をポーリングで待つ。次のコマンドを `EXIT ...` が出力されるまで繰り返し実行する。
 
-timeout した場合は Codex プロセスを kill してはならない。`AskUserQuestion` で待機するか確認し、待つ場合は `TRANSCRIPT_FILE` を定期的に Read して進行状態を確認し、`RESULT_FILE` が出力されたら最終回答を読む。待たない場合は、後で両方のファイルを読めることをパスとともに伝える。
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 120
+```
 
-バックグラウンドで実行中の Codex プロセスを `ps` などで確認する場合、プロセス名の一致だけで「自分が起動したものだ」と判断してはならない。`ps -o pid,ppid,tty,lstart,command` で `ppid` (今回のシェルの子か)、`lstart` (今回のセッション開始後に起動したか)、`tty` (無人実行か別の対話セッションか) を確認したうえで対象を特定する。
+第2引数は待機秒数 (既定 120)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING` と `TRANSCRIPT_FILE` の末尾 (JSON イベント) を出力するので、進行状況をユーザーに短く伝えて再実行する。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
 
-Codex CLI 自体が中断・クラッシュして最終回答が保存されなかった場合は、`TRANSCRIPT_FILE` に書き出し済みのイベントを読んで状態を確認する。保存セッションは `codex exec resume --last "<元の依頼を継続して完了してください>"` で再開できる。現在の Codex CLI の `resume` サブコマンドには `--sandbox` がないため、元のセッションの権限設定で再開される。wrapper script を使い、同じ `RESULT_FILE` と `TRANSCRIPT_FILE` を指定する。
+`EXIT_FILE` の中身が `0` なら `RESULT_FILE` を Read して最終回答を表示し、Codex CLI による結果である旨を短く注記する。末尾に保存先パス (`RESULT_FILE` と `TRANSCRIPT_FILE`) を明示する。`0` 以外なら `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する。
+
+ポーリングを待たずにユーザーへ制御を返す場合は、Codex プロセスを kill してはならない。`AskUserQuestion` で待機するか確認し、待たない場合は後で `RESULT_FILE` / `TRANSCRIPT_FILE` / `LOG_FILE` を読めることをパスとともに伝える。
+
+バックグラウンドで実行中の Codex プロセスを `ps` などで確認する場合は、wrapper が出力した PID を第一の識別手段とする。`ps -o pid,ppid,tty,lstart,command -p <PID>` でプロセスの詳細を確認する。PID が分からない場合にプロセス名の一致だけで「自分が起動したものだ」と判断してはならない。その場合は `ps -o pid,ppid,tty,lstart,command` で `ppid` (今回のシェルの子か)、`lstart` (今回のセッション開始後に起動したか)、`tty` (無人実行か別の対話セッションか) を確認したうえで対象を特定する。
+
+Codex CLI 自体が中断・クラッシュして最終回答が保存されなかった場合は、`TRANSCRIPT_FILE` に書き出し済みのイベントや `LOG_FILE` を読んで状態を確認する。保存セッションは `codex exec resume --last "<元の依頼を継続して完了してください>"` で再開できる。現在の Codex CLI の `resume` サブコマンドには `--sandbox` がないため、元のセッションの権限設定で再開される。wrapper script を使い、同じ `RESULT_FILE` と `TRANSCRIPT_FILE` を指定する。resume も同じ wrapper 経由で切り離し起動になるため、上記と同じポーリングフローで完了を待つ。
 
 ## Examples
 
