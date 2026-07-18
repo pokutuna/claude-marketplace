@@ -20,5 +20,13 @@ if [ -f "$exit_file" ]; then
   echo "EXIT $(cat "$exit_file")"
 else
   echo "RUNNING"
-  tail -n 5 "$transcript_file" 2>/dev/null
+  # Keep the progress output small: transcript lines can be huge (full command
+  # output or message bodies), so emit event summaries instead of raw JSON.
+  if command -v jq >/dev/null 2>&1; then
+    tail -n 20 "$transcript_file" 2>/dev/null |
+      jq -r '[.type, .item.type? // empty, (.item.command? // .item.text? // "" | tostring | .[0:120])] | map(select(. != "")) | join(" | ")' 2>/dev/null |
+      tail -n 5
+  else
+    tail -n 5 "$transcript_file" 2>/dev/null | cut -c 1-300
+  fi
 fi
