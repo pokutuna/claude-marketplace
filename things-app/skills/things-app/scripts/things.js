@@ -2,7 +2,18 @@
 
 // Things 3 JXA bridge — read & update tasks as Markdown
 
-const app = Application("Things3");
+// Prefer the app name (respects wherever the user installed it); fall back to
+// the default bundle path when name resolution is unavailable (e.g. sandbox).
+const APP_PATH = "/Applications/Things3.app";
+const [app, APP_SPEC] = (function () {
+  try {
+    const byName = Application("Things3");
+    byName.lists(); // force resolution — constructing alone never throws
+    return [byName, "Things3"];
+  } catch (e) {
+    return [Application(APP_PATH), APP_PATH];
+  }
+})();
 
 // ---------------------------------------------------------------------------
 // Resolve locale-dependent built-in list names by index
@@ -33,7 +44,7 @@ function runAS(script) {
 }
 
 function thingsAS(body) {
-  return runAS('tell application "Things3" to ' + body);
+  return runAS('tell application "' + escapeAS(APP_SPEC) + '" to ' + body);
 }
 
 function escapeAS(s) {
