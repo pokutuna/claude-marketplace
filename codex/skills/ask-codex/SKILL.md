@@ -6,9 +6,9 @@ metadata:
   author: pokutuna
   compatibility: Codex CLI installed and authenticated
 allowed-tools:
-  - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh)
-  - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh *)
-  - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/wait-codex.sh *)
+  - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/share-path.sh)
+  - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh *)
+  - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh *)
   - Read
   - AskUserQuestion
 ---
@@ -18,11 +18,13 @@ allowed-tools:
 OpenAI Codex CLI に質問や依頼を投げ、独立した AI の意見を得る。
 コードレビュー、設計相談、調査、質問など用途を問わない。
 
-このセッションの保存先 (skill 起動時に確定):
+このセッションの保存先は、skill 起動時に次を実行して確定する。
 
-PATHS = !`bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh`
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/share-path.sh
+```
 
-上記出力の 1 行目が RESULT_FILE (`.md`)、2 行目が TRANSCRIPT_FILE (`.jsonl`)。
+出力の 1 行目が RESULT_FILE (`.md`)、2 行目が TRANSCRIPT_FILE (`.jsonl`)。
 以降の手順では上記パスを `--output-last-message` と実行イベントの保存先に指定し、ユーザーへの案内にも使う。
 
 wrapper script は TRANSCRIPT_FILE から派生する2つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)。
@@ -30,7 +32,7 @@ wrapper script は TRANSCRIPT_FILE から派生する2つのファイルも生�
 Codex は Auto 相当の次のオプションで必ず起動する。
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh "<上記 RESULT_FILE>" "<上記 TRANSCRIPT_FILE>" \
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh "<上記 RESULT_FILE>" "<上記 TRANSCRIPT_FILE>" \
   --sandbox workspace-write -c 'approval_policy="on-request"' \
   --model gpt-5.6-luna -c 'model_reasoning_effort="xhigh"' \
   --color never --json -C "$PWD" "<prompt>"
@@ -89,7 +91,7 @@ $ARGUMENTS
 `codex exec` は PROMPT 引数が省略・空文字列になると stdin からの入力待ちに切り替わり、ハングする。ヒアドキュメントで組み立てる `<依頼内容をここに記述>` の部分が必ず空でない実質的な内容に展開されていることを確認してから実行する。
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/run-codex.sh "<冒頭で確定した RESULT_FILE>" "<冒頭で確定した TRANSCRIPT_FILE>" \
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh "<冒頭で確定した RESULT_FILE>" "<冒頭で確定した TRANSCRIPT_FILE>" \
   --sandbox workspace-write -c 'approval_policy="on-request"' \
   --model "<model: 既定 gpt-5.6-luna>" -c 'model_reasoning_effort="<effort: 既定 xhigh>"' \
   --color never --json -C "$PWD" \
@@ -106,7 +108,7 @@ PROMPT
 wrapper 起動後、codex は background で実行され続けるので、完了をポーリングで待つ。次のコマンドを `EXIT ...` が出力されるまで繰り返し実行する。
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 120
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 120
 ```
 
 第2引数は待機秒数 (既定 120)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING` と直近イベントの要約 (種別とコマンド・メッセージの冒頭) を出力するので、進行状況をユーザーに短く伝えて再実行する。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
