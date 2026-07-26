@@ -108,10 +108,10 @@ PROMPT
 wrapper 起動後、codex は background で実行され続けるので、完了をポーリングで待つ。次のコマンドを `EXIT ...` が出力されるまで繰り返し実行する。
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 120
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 300
 ```
 
-第2引数は待機秒数 (既定 120)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING` と直近イベントの要約 (種別とコマンド・メッセージの冒頭) を出力するので、進行状況をユーザーに短く伝えて再実行する。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
+第2引数は待機秒数 (既定 300)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING (<n> events done)` と直近イベントの要約 (種別とコマンド・メッセージの冒頭) を出力するので、進行状況を 1 行以内で伝えて即座に再実行する。要約は進行確認のためだけの出力なので、内容を解説したり結論を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
 
 `EXIT_FILE` の中身が `0` なら `RESULT_FILE` を Read して最終回答を表示し、Codex CLI による結果である旨を短く注記する。末尾に保存先パス (`RESULT_FILE` と `TRANSCRIPT_FILE`) を明示する。`0` 以外なら `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する。
 

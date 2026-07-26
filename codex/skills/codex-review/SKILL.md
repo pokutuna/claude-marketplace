@@ -59,11 +59,14 @@ $ARGUMENTS
 - **観点なし** → 対象フラグのみを渡す
 - **観点あり** → 対象フラグを渡さず、`[PROMPT]` に観点とレビュー範囲を文章で書く
 
-観点ありの場合、対象は Codex に自分で `git diff` させて特定させる。
-プロンプトの冒頭に範囲を明示する。例:
+観点ありの場合、対象は Codex に自分で git コマンドを実行させて特定させる。
+プロンプトの冒頭に範囲と確認手段を明示する。素の `git diff` は staged hunk も untracked ファイルも
+出力しないため、`--uncommitted` 相当の範囲では確認コマンドを個別に指示する。例:
 
 ```text
-staged・unstaged・untracked の変更をレビューしてください。範囲は git status と git diff で確認してください。
+staged・unstaged・untracked の変更をレビューしてください。
+範囲は `git status --porcelain`、`git diff` (unstaged)、`git diff --cached` (staged) で確認し、
+untracked ファイルは中身も読んでください。
 
 観点: <ユーザー指定の観点>
 ```
@@ -130,10 +133,10 @@ PROMPT
 wrapper 起動後、codex は background で実行され続けるので、完了をポーリングで待つ。次のコマンドを `EXIT ...` が出力されるまで繰り返し実行する。
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 120
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 300
 ```
 
-第 2 引数は待機秒数 (既定 120)。`RUNNING` と直近イベントの要約が出た場合は、進行状況をユーザーに短く伝えて再実行する。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。ポーリングを待たずに制御を返す場合も、Codex プロセスを kill してはならない。
+第 2 引数は待機秒数 (既定 300)。`RUNNING (<n> events done)` と直近イベントの要約が出た場合は、進行状況を 1 行以内で伝えて即座に再実行する。要約は進行確認のためだけの出力なので、内容を解説したり finding を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。ポーリングを待たずに制御を返す場合も、Codex プロセスを kill してはならない。
 
 - `EXIT 0`: `RESULT_FILE` を Read し、Claude 自身のレビューとは独立した Codex の結果として提示する。finding の優先度、タイトル、ファイル位置、全体評価を変更せずに伝える。末尾に `RESULT_FILE` と `TRANSCRIPT_FILE` のパスを示す
 - `0` 以外: `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する
