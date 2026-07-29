@@ -27,7 +27,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/share-path.sh
 ```
 
 出力の 1 行目が RESULT_FILE (`.md`)、2 行目が TRANSCRIPT_FILE (`.jsonl`)。
-wrapper script は TRANSCRIPT_FILE から派生する 2 つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)。
+wrapper script は TRANSCRIPT_FILE から派生する 3 つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)、`${TRANSCRIPT_FILE%.jsonl}.pid` が codex 本体の PID (PID_FILE)。
+wrapper には watchdog が組み込まれており、transcript/log に 20 分間書き込みがない、または実行が 90 分を超えると codex を kill して EXIT_FILE に非 0 を書く。そのためポーリングが永遠に続くことはない。
 
 <ARGUMENTS>
 $ARGUMENTS
@@ -98,7 +99,7 @@ wrapper は codex exec をプロセスグループから切り離して backgrou
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh "<冒頭で確定した RESULT_FILE>" "<冒頭で確定した TRANSCRIPT_FILE>" \
-  --sandbox read-only -c 'approval_policy="never"' \
+  --sandbox read-only --ignore-user-config -c 'approval_policy="never"' \
   --model "<model: 既定 gpt-5.6-luna>" -c 'model_reasoning_effort="<effort: 既定 xhigh>"' \
   --color never --json -C "$PWD" \
   review --uncommitted
@@ -108,7 +109,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh "<冒頭で確定した RESULT_F
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh "<冒頭で確定した RESULT_FILE>" "<冒頭で確定した TRANSCRIPT_FILE>" \
-  --sandbox read-only -c 'approval_policy="never"' \
+  --sandbox read-only --ignore-user-config -c 'approval_policy="never"' \
   --model "<model: 既定 gpt-5.6-luna>" -c 'model_reasoning_effort="<effort: 既定 xhigh>"' \
   --color never --json -C "$PWD" \
   review "$(cat <<'PROMPT'
@@ -120,6 +121,7 @@ PROMPT
 ```
 
 - `--sandbox read-only`: ファイル編集とワークスペース書き込みを禁じる。レビューに編集は不要
+- `--ignore-user-config`: `~/.codex/config.toml` を読み込まない (認証は維持される)。ユーザー設定の MCP サーバーや notify hook が起動を遅らせたりハングさせたりするのを防ぐ。レビューに必要な設定はすべてこのコマンドで明示している。ユーザーが config.toml の `model_providers` 経由でしか使えないモデルを指定した場合のみ、このフラグを外す
 - `approval_policy="never"`: 承認要求で停止させない。read-only なので承認すべき操作は発生しない
 - `review <target flag>`: `--uncommitted` / `--base <branch>` / `--commit <sha>` のいずれか 1 つ
 
@@ -136,10 +138,14 @@ wrapper 起動後、codex は background で実行され続けるので、完了
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 300
 ```
 
-第 2 引数は待機秒数 (既定 300)。`RUNNING (<n> events done)` と直近イベントの要約が出た場合は、進行状況を 1 行以内で伝えて即座に再実行する。要約は進行確認のためだけの出力なので、内容を解説したり finding を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。ポーリングを待たずに制御を返す場合も、Codex プロセスを kill してはならない。
+第 2 引数は待機秒数 (既定 300)。`RUNNING (<n> events done, last activity <s>s ago)` と直近イベントの要約が出た場合は、進行状況を 1 行以内で伝えて即座に再実行する。要約は進行確認のためだけの出力なので、内容を解説したり finding を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。ポーリングを待たずに制御を返す場合も、Codex プロセスを kill してはならない。
+
+大きな差分に対する xhigh のレビューは 30〜60 分かかることがある。RUNNING が続いても異常ではないので、last activity が更新されている限り根気よくポーリングを続ける。最初の RUNNING を確認した時点で、レビューには数十分かかりうることをユーザーに一度伝えておく。
 
 - `EXIT 0`: `RESULT_FILE` を Read し、Claude 自身のレビューとは独立した Codex の結果として提示する。finding の優先度、タイトル、ファイル位置、全体評価を変更せずに伝える。末尾に `RESULT_FILE` と `TRANSCRIPT_FILE` のパスを示す
-- `0` 以外: `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する
+- `EXIT 143` / `EXIT 137`: watchdog による停止の可能性が高い。`LOG_FILE` 末尾の `watchdog:` 行を確認し、無活動または実行時間超過で停止した旨を報告する
+- その他の `0` 以外: `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する
+- `DEAD (...)`: codex プロセスが exit code を残さず消えている (クラッシュや再起動)。`LOG_FILE` と `TRANSCRIPT_FILE` の末尾を確認して状況を報告し、ポーリングを終了する
 - 結果が保存されていない場合、推測で finding を作ってはならない
 
 この skill はファイル編集、コミット、レビューコメントの投稿を行わない。

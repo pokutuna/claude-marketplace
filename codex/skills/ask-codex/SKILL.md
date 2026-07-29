@@ -27,7 +27,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/share-path.sh
 出力の 1 行目が RESULT_FILE (`.md`)、2 行目が TRANSCRIPT_FILE (`.jsonl`)。
 以降の手順では上記パスを `--output-last-message` と実行イベントの保存先に指定し、ユーザーへの案内にも使う。
 
-wrapper script は TRANSCRIPT_FILE から派生する2つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)。
+wrapper script は TRANSCRIPT_FILE から派生する 3 つのファイルも生成する。`${TRANSCRIPT_FILE%.jsonl}.log` が stderr ログ (LOG_FILE)、`${TRANSCRIPT_FILE%.jsonl}.exit` が codex の exit code (EXIT_FILE、完了時にのみ書かれる)、`${TRANSCRIPT_FILE%.jsonl}.pid` が codex 本体の PID (PID_FILE)。
+wrapper には watchdog が組み込まれており、transcript/log に 20 分間書き込みがない、または実行が 90 分を超えると codex を kill して EXIT_FILE に非 0 を書く。
 
 Codex は Auto 相当の次のオプションで必ず起動する。
 
@@ -111,7 +112,7 @@ wrapper 起動後、codex は background で実行され続けるので、完了
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/wait-codex.sh "<冒頭で確定した TRANSCRIPT_FILE>" 300
 ```
 
-第2引数は待機秒数 (既定 300)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING (<n> events done)` と直近イベントの要約 (種別とコマンド・メッセージの冒頭) を出力するので、進行状況を 1 行以内で伝えて即座に再実行する。要約は進行確認のためだけの出力なので、内容を解説したり結論を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
+第2引数は待機秒数 (既定 300)。`EXIT_FILE` (`${TRANSCRIPT_FILE%.jsonl}.exit`) が現れると `EXIT <code>` を出力して完了を報せる。待機秒数内に完了しなければ `RUNNING (<n> events done, last activity <s>s ago)` と直近イベントの要約 (種別とコマンド・メッセージの冒頭) を出力するので、進行状況を 1 行以内で伝えて即座に再実行する。codex プロセスが exit code を残さず消えた場合は `DEAD (...)` を出力するので、`LOG_FILE` と `TRANSCRIPT_FILE` の末尾から状況を報告する。`EXIT 143` / `EXIT 137` は watchdog による停止の可能性が高く、`LOG_FILE` 末尾の `watchdog:` 行で確認できる。要約は進行確認のためだけの出力なので、内容を解説したり結論を推測したりしない。プロセスグループが切り離されているため、ポーリングコマンドが timeout しても codex 本体には影響しない。
 
 `EXIT_FILE` の中身が `0` なら `RESULT_FILE` を Read して最終回答を表示し、Codex CLI による結果である旨を短く注記する。末尾に保存先パス (`RESULT_FILE` と `TRANSCRIPT_FILE`) を明示する。`0` 以外なら `LOG_FILE` (`${TRANSCRIPT_FILE%.jsonl}.log`) と `TRANSCRIPT_FILE` の末尾を確認し、失敗内容を報告する。
 
