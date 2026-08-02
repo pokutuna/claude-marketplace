@@ -121,6 +121,12 @@
       "description": "Stop tool execution before you exhaust your Claude usage. Reads the 5h/7d usage % and the session cost from statusLine at zero metering cost and denies tool calls once a threshold is passed (use cost on plans with no usage quota).",
       "source": "./limit-usage",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/limit-usage"
+    },
+    {
+      "name": "jupyter",
+      "description": "Connect a remote Jupyter Server (RunPod, GCP, self-hosted) to Claude Code via jupyter-mcp-server, with SSH tunnel support",
+      "source": "./jupyter",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/jupyter"
     }
   ]
 }
