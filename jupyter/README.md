@@ -38,6 +38,6 @@ pod を切り替えたら skill を再実行するだけで state が置き換�
 ## Notes
 
 - JupyterLab UI で MCP の notebook を開くと kernel 選択が出る (MCP_SERVER モードは Jupyter session を登録しないため)。新しい kernel を選ぶと状態の異なる2つ目が起動する。同じ状態を触るには "Use existing kernel" で稼働中の kernel を選ぶ
-- ローカル notebook + リモートカーネル (hybrid 構成) は jupyter-mcp-server 1.1.4 の上流バグ (`use_notebook` が collaboration セッションを RUNTIME_URL に開く) のため非対応。修正後に DOCUMENT_URL/RUNTIME_URL 分離で実現可能
+- ローカル notebook + リモートカーネル (hybrid 構成) は上流バグ (`use_notebook` が contents 系操作を runtime 側に向ける) のため標準では非対応。修正 fork ([pokutuna/jupyter-mcp-server@fix-collab-session-document-url](https://github.com/pokutuna/jupyter-mcp-server/tree/fix-collab-session-document-url)) で動作検証済み、upstream 修正後に対応予定
 - uvx は隔離環境で動くため、ローカルの `.venv` に依存しない・汚さない。追加パッケージはリモート (pod) 側に入れる
 - state ファイルは umask 077 (600 相当)、トンネルの pid/log は `${TMPDIR}/jupyter-mcp-tunnel/` に保存

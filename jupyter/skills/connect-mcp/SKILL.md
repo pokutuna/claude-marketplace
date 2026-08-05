@@ -77,7 +77,7 @@ token 省略時は `""`。最終行で案内を分岐:
 
 - **notebook 系ツールには `jupyter-collaboration` が必要**: `use_notebook` + `insert_execute_code_cell` 等が `/api/collaboration/session/...` の 404 で失敗したら、リモートに拡張がない (RunPod の素のテンプレ等)。(a) notebook に保存されない `execute_code` で代替、(b) リモートに `pip install jupyter-collaboration` して Jupyter プロセスを再起動、のいずれかを案内する
 - **JupyterLab UI で開くと kernel 選択が出る**: MCP_SERVER モードは notebook↔kernel の Jupyter session を登録しないため。ダイアログで新しい kernel を選ぶと2つ目が起動して状態が分かれる。MCP と同じ状態を触りたければ "Use existing kernel" で稼働中の kernel を選ぶよう案内する
-- **ローカル notebook + リモートカーネル (hybrid) は非対応**: jupyter-mcp-server 1.1.4 の `use_notebook` が collaboration セッションを RUNTIME_URL に開く上流バグのため。修正されたら DOCUMENT_URL/RUNTIME_URL 分離で実現できる
+- **ローカル notebook + リモートカーネル (hybrid) は標準では非対応**: jupyter-mcp-server の `use_notebook` が contents 系操作 (collaboration セッション・path チェック・create) を runtime 側サーバーに向ける上流バグのため。修正 fork ([pokutuna/jupyter-mcp-server](https://github.com/pokutuna/jupyter-mcp-server) の `fix-collab-session-document-url` ブランチ) で動作検証済み: wrapper の exec を `uvx --from git+https://github.com/pokutuna/jupyter-mcp-server@fix-collab-session-document-url jupyter-mcp-server` に変え、state ファイルに `DOCUMENT_URL`/`DOCUMENT_TOKEN` (ローカル doc server、要 jupyter-collaboration) + `CODE_SANDBOX_URL`/`CODE_SANDBOX_TOKEN` (リモート、main で RUNTIME_* から改名) を書く。upstream 修正が入れば通常構成で対応予定
 
 ## Examples
 

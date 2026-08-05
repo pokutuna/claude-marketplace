@@ -1,6 +1,6 @@
 {
   "name": "jupyter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Connect a remote Jupyter Server (RunPod, GCP, self-hosted) to Claude Code via jupyter-mcp-server, with SSH tunnel support",
   "author": {
     "name": "pokutuna"
