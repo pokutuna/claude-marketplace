@@ -25,6 +25,9 @@ Create RunPod pod instances from a `runpod.toml` configuration file.
   - GPU types: `runpodctl gpu list` (NOT `runpodctl get gpus`)
 - `create_pod.py` requires **runpodctl >= 2.1.7** (for `--network-volume-id` on the new `pod create` form)
 - **Do NOT wrap `create_pod.py` in a shell `while` retry loop**. Use the built-in `--retry` flag — wrapping creates duplicate pods if your success/failure detection is wrong. The script also refuses to create when a pod with the same name is already running (override with `--allow-duplicate`).
+- Use `--stop-after VALUE` only when the user requests an automatic stop. The value is passed through to the installed `runpodctl`.
+- If the user requests Jupyter, use `--jupyter`. This adds `8888/http` and prints `https://<pod-id>-8888.proxy.runpod.net`; when `JUPYTER_PASSWORD` is in `[env]`, the printed URL also includes `?token=...`.
+- RunPod Secret references are resolved only inside the Pod, not by this local script. If the user asks to connect to Jupyter and the printed URL contains `{{ RUNPOD_SECRET_... }}`, ask the user for the actual Jupyter password/token and replace the token part before returning the usable URL. Do not ask for it when the user only asks to create the Pod.
 
 ## Prerequisites
 
@@ -60,6 +63,8 @@ uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --ssh --retry         # Wait for stock, then SSH in
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --dry-run             # Show command only
 uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --gpu "RTX 5090"      # Override GPU type
+uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --stop-after 2h      # Auto-stop when requested
+uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py --jupyter           # Expose Jupyter and print URL
 ```
 
 For low-stock GPUs, prefer `--ssh --retry` over wrapping the script in a shell loop. See `--help` for `--retry-interval` / `--retry-max`.

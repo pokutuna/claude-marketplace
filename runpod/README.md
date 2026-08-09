@@ -50,6 +50,8 @@ Create RunPod GPU pod instances from a `runpod.toml` config file.
 - RunPod Secret support (`{{ RUNPOD_SECRET_XXX }}`)
 - SSH auto-connect with init script and tmux session
 - CLI overrides for GPU, datacenter, pod name
+- Optional auto-stop with `--stop-after`
+- Optional Jupyter proxy URL output with `--jupyter`
 - `--dry-run` to preview commands
 
 ### volume-storage

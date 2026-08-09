@@ -143,6 +143,9 @@ def build_create_command(config: dict, env_dict: dict[str, str]) -> list[str]:
     if env_dict:
         cmd += ["--env", json.dumps(env_dict)]
 
+    if pod.get("stop_after"):
+        cmd += ["--stop-after", str(pod["stop_after"])]
+
     return cmd
 
 
@@ -232,6 +235,8 @@ def print_pod_summary(config: dict) -> None:
     if pod.get("datacenter_id"):
         print(f"  Datacenter: {pod['datacenter_id']}")
     print(f"  Image: {pod['image']}")
+    if pod.get("stop_after"):
+        print(f"  Stop after: {pod['stop_after']}")
     if volume.get("network_volume_id"):
         print(
             f"  Network Volume: {volume['network_volume_id']} -> {volume.get('volume_path', '/workspace')}"
@@ -367,6 +372,16 @@ def main() -> None:
     parser.add_argument("--gpu", help="Override GPU type")
     parser.add_argument("--datacenter", help="Override datacenter ID")
     parser.add_argument(
+        "--stop-after",
+        metavar="VALUE",
+        help="Automatically stop the Pod after the RunPod-supported duration or datetime",
+    )
+    parser.add_argument(
+        "--jupyter",
+        action="store_true",
+        help="Expose the Jupyter HTTP port and print its proxy URL",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="Print command without executing"
     )
     parser.add_argument(
@@ -417,6 +432,11 @@ def main() -> None:
         config["pod"]["gpu_type"] = args.gpu
     if args.datacenter:
         config["pod"]["datacenter_id"] = args.datacenter
+    if args.stop_after is not None:
+        config["pod"]["stop_after"] = args.stop_after
+
+    if args.jupyter and "8888/http" not in config["pod"]["ports"]:
+        config["pod"]["ports"] = [*config["pod"]["ports"], "8888/http"]
 
     env_vars = build_env_vars(config)
     cmd = build_create_command(config, env_vars)
@@ -484,6 +504,12 @@ def main() -> None:
     print()
     print(f"Pod created: {pod_id}")
     print("Check status: runpodctl pod list")
+    if args.jupyter:
+        jupyter_url = f"https://{pod_id}-8888.proxy.runpod.net"
+        token = config.get("env", {}).get("JUPYTER_PASSWORD")
+        if token:
+            jupyter_url += f"/?token={token}"
+        print(f"Jupyter: {jupyter_url}")
 
     if not args.ssh:
         return
