@@ -127,6 +127,12 @@
       "description": "Connect a remote Jupyter Server (RunPod, GCP, self-hosted) to Claude Code via jupyter-mcp-server, with SSH tunnel support",
       "source": "./jupyter",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/jupyter"
+    },
+    {
+      "name": "google-style-guide",
+      "description": "Write or fix developer documentation following the Google developer documentation style guide (English and Japanese skills)",
+      "source": "./google-style-guide",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/google-style-guide"
     }
   ]
 }

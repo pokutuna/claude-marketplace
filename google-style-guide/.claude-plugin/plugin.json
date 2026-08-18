@@ -1,0 +1,16 @@
+{
+  "name": "google-style-guide",
+  "version": "0.1.0",
+  "description": "Write or fix developer documentation following the Google developer documentation style guide (English and Japanese skills)",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "documentation",
+    "style-guide",
+    "tech-writing",
+    "google",
+    "writing"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/google-style-guide"
+}
