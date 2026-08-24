@@ -1,6 +1,6 @@
 ---
 name: style-ja
-description: Write or fix Japanese documentation following the Google developer documentation style guide plus Japanese wording conventions. Use when writing, editing, reviewing, or 校正 of Japanese developer docs (日本語の README、ガイド、チュートリアル、API リファレンス) or when asked about ドキュメントスタイル, スタイルガイド, 文書レビュー, 表記ルール for Japanese text. The document's language decides: for English-language documents use the style-en skill, even when the request is written in Japanese.
+description: 'Write or fix Japanese documentation following the Google developer documentation style guide plus Japanese wording conventions. Use when writing, editing, reviewing, or 校正 of Japanese developer docs (日本語の README、ガイド、チュートリアル、API リファレンス) or when asked about ドキュメントスタイル, スタイルガイド, 文書レビュー, 表記ルール for Japanese text. The document''s language decides: for English-language documents use the style-en skill, even when the request is written in Japanese.'
 metadata:
   author: pokutuna
   compatibility: Self-contained; shares reference files with the style-en skill in this plugin

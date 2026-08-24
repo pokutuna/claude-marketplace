@@ -1,6 +1,6 @@
 ---
 name: style-en
-description: Write or fix English documentation following the Google developer documentation style guide. Use when writing, editing, or reviewing English developer docs (READMEs, guides, tutorials, API references) or when asked about "Google style guide", "developer documentation style", "tech writing style", or "documentation review" for English text. The document's language decides: for Japanese-language documents use the style-ja skill, even when the request is in English.
+description: 'Write or fix English documentation following the Google developer documentation style guide. Use when writing, editing, or reviewing English developer docs (READMEs, guides, tutorials, API references) or when asked about "Google style guide", "developer documentation style", "tech writing style", or "documentation review" for English text. The document''s language decides: for Japanese-language documents use the style-ja skill, even when the request is in English.'
 metadata:
   author: pokutuna
   compatibility: WebFetch only as fallback; references/ is shared with style-ja - keep filenames stable
