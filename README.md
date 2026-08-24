@@ -55,5 +55,5 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [pushover-notify](./pushover-notify/) | Send Pushover push notifications when Claude needs attention (display-aware on macOS) |
 | [difit](./difit/) | Round-trip code review with difit — preload AI comments, pick up human replies via HTTP API |
 | [limit-usage](./limit-usage/) | Stop tool execution before you exhaust your Claude rate limit (zero metering cost, reads from statusLine) |
-| [jupyter](./jupyter/) | Connect a remote Jupyter Server to Claude Code via jupyter-mcp-server (SSH tunnel support) |
+| [jupyter](./jupyter/) | Run local notebooks on a remote Jupyter Server's kernel (GPU) via jupyter-mcp-server (SSH tunnel support) |
 | [google-style-guide](./google-style-guide/) | Write or fix developer docs following the Google developer documentation style guide (en/ja skills) |

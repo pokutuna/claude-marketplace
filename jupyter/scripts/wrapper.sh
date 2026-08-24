@@ -21,4 +21,7 @@ set -a
 source "$ENV_FILE"
 set +a
 
+# @latest keeps us on the current release. 1.5.2+ routes document operations
+# to DOCUMENT_URL when the document and code-sandbox servers differ
+# (hybrid: local notebook + remote kernel).
 exec uvx jupyter-mcp-server@latest

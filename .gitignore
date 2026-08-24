@@ -2,3 +2,8 @@ docs/The-Complete-Guide-to-Building-Skills-for-Claude.md
 __pycache__/
 *.pyc
 .playwright-cli/
+
+# jupyter plugin runtime artifacts (local doc server / notebooks)
+.jupyter/
+.jupyter_ystore.db
+.ipynb_checkpoints/

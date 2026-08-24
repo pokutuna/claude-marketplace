@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Stop SSH tunnel(s) started by setup-tunnel.sh.
+# Stop SSH tunnel(s) started by setup-tunnel.sh, and the local document server
+# when stopping everything.
 # Usage: stop-tunnel.sh [port|all]   (default: all)
 
 TARGET=${1:-all}
@@ -26,4 +27,9 @@ for PID_FILE in "$STATE_DIR"/port-*.pid; do
 done
 
 [[ "$STOPPED" == 0 ]] && echo "no running tunnel matched '$TARGET'"
+
+# The doc server only serves the hybrid setup, so tear it down with the tunnels.
+if [[ "$TARGET" == "all" ]]; then
+  bash "$(dirname "${BASH_SOURCE[0]}")/doc-server.sh" stop
+fi
 exit 0
