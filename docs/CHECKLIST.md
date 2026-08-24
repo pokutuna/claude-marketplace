@@ -10,6 +10,10 @@ Checklist for adding or updating plugins.
 - [ ] Add entry to `.claude-plugin/marketplace.json` `plugins` array
   - name, description, source, homepage
 - [ ] Implement Skills/Commands/Agents/Hooks
+- [ ] Decide whether the plugin should also run under Codex (see `Codex Support` in `CLAUDE.md`)
+  - If yes: add a block to `scripts/codex-interface.json`, run `scripts/gen-codex-manifest.py <name>`,
+    and add an entry to `.agents/plugins/marketplace.json`
+  - Skip it for hooks-driven plugins and anything needing `CLAUDE_SESSION_ID` or `.claude/settings.json`
 
 ## Skill
 
@@ -25,6 +29,10 @@ Checklist for adding or updating plugins.
 - [ ] Increment `version` in `plugin.json` (the only place versions are tracked)
   - Marketplace is cached; changes won't reflect without version bump
   - Skills do not carry their own version — bump the plugin instead
+- [ ] Adding or regenerating `.codex-plugin/plugin.json` alone needs no bump
+  - It does not change what Claude Code loads, so the marketplace cache is unaffected
+  - But when a bump happens for any other reason, re-run `scripts/gen-codex-manifest.py <name>`
+    so `.codex-plugin/plugin.json` carries the same version
 
 ## Before Commit
 
@@ -34,3 +42,5 @@ Checklist for adding or updating plugins.
 - [ ] Create or update `<plugin-name>/README.md`
 - [ ] Add link to plugin directory (not README) in root `README.md` if new plugin added
 - [ ] Verify `.gitignore` excludes unwanted files
+- [ ] If the plugin has a `.codex-plugin/`, verify its `version` matches `.claude-plugin/plugin.json`
+  and that `.agents/plugins/marketplace.json` lists it
