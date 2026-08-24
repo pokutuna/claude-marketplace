@@ -1,0 +1,33 @@
+{
+  "name": "kaggle-helper",
+  "version": "0.4.3",
+  "description": "Kaggle discussion and notebook analysis commands for competition research",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "kaggle",
+    "competition",
+    "notebook",
+    "discussion",
+    "machine-learning"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/kaggle-helper",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kaggle Helper",
+    "shortDescription": "Research Kaggle competitions",
+    "longDescription": "Analyze Kaggle discussions and notebooks, and explore the Meta Kaggle dataset, to research a competition.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Summarize the top discussions for this competition"
+    ],
+    "brandColor": "#20BEFF"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "actions-ubuntu-slim-migration",
+  "version": "0.1.0",
+  "description": "Analyze GitHub Actions workflows and migrate from ubuntu-latest to ubuntu-slim for cost optimization",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "github-actions",
+    "ubuntu-slim",
+    "cost-optimization",
+    "ci-cd"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/actions-ubuntu-slim-migration",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ubuntu-slim Migration",
+    "shortDescription": "Migrate Actions runners to ubuntu-slim",
+    "longDescription": "Analyze GitHub Actions workflows and migrate them from ubuntu-latest to ubuntu-slim, adding back only the tooling each job actually needs to cut runner cost.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Migrate my workflows to ubuntu-slim"
+    ],
+    "brandColor": "#2088FF"
+  }
+}

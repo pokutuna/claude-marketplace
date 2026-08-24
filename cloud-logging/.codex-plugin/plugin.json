@@ -1,0 +1,33 @@
+{
+  "name": "cloud-logging",
+  "version": "0.1.1",
+  "description": "Investigate Google Cloud Logging with efficient context management",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "gcloud",
+    "logging",
+    "cloud-logging",
+    "investigation",
+    "google-cloud"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/cloud-logging",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cloud Logging",
+    "shortDescription": "Investigate Google Cloud Logging",
+    "longDescription": "Query and narrow down Google Cloud Logging entries with an approach that keeps large log volumes from flooding the context window.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Investigate errors in Cloud Logging for this service"
+    ],
+    "brandColor": "#4285F4"
+  }
+}

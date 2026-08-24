@@ -1,0 +1,35 @@
+{
+  "name": "jupyter",
+  "version": "0.2.0",
+  "description": "Run local notebooks on a remote Jupyter Server's kernel (RunPod, GCP, self-hosted) via jupyter-mcp-server, with SSH tunnel support",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/jupyter",
+  "keywords": [
+    "jupyter",
+    "mcp",
+    "ssh-tunnel",
+    "runpod",
+    "gpu",
+    "notebook"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Jupyter Remote Kernel",
+    "shortDescription": "Local notebooks, remote kernel",
+    "longDescription": "Run local notebooks against a remote Jupyter Server kernel (RunPod, GCP, or self-hosted) through jupyter-mcp-server, including SSH tunnel setup.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Connect this notebook to my remote Jupyter kernel"
+    ],
+    "brandColor": "#F37626"
+  }
+}

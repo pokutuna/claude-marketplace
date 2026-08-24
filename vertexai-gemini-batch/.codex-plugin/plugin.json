@@ -1,0 +1,33 @@
+{
+  "name": "vertexai-gemini-batch",
+  "version": "0.1.1",
+  "description": "Generate batch input files and run Vertex AI Batch Prediction for Gemini",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "gemini",
+    "vertex-ai",
+    "batch-prediction",
+    "google-cloud"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/vertexai-gemini-batch",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Vertex AI Gemini Batch",
+    "shortDescription": "Run Gemini batch predictions",
+    "longDescription": "Generate batch input files and run Vertex AI Batch Prediction jobs for Gemini models.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Set up a Gemini batch prediction job"
+    ],
+    "brandColor": "#4285F4"
+  }
+}

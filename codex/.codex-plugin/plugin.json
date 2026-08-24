@@ -1,0 +1,33 @@
+{
+  "name": "codex",
+  "version": "0.4.0",
+  "description": "OpenAI Codex CLI integration for autonomous second opinions and code review",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/codex",
+  "keywords": [
+    "codex",
+    "openai",
+    "review",
+    "code-review",
+    "second-opinion"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex CLI",
+    "shortDescription": "Second opinion from Codex CLI",
+    "longDescription": "Ask the OpenAI Codex CLI for an autonomous second opinion, or run its built-in read-only review mode over the current changes.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Review my current changes with Codex"
+    ],
+    "brandColor": "#000000"
+  }
+}

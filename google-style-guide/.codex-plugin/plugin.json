@@ -1,0 +1,34 @@
+{
+  "name": "google-style-guide",
+  "version": "0.1.1",
+  "description": "Write or fix developer documentation following the Google developer documentation style guide (English and Japanese skills)",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/google-style-guide",
+  "keywords": [
+    "documentation",
+    "style-guide",
+    "tech-writing",
+    "google",
+    "writing"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Style Guide",
+    "shortDescription": "Docs in Google developer style",
+    "longDescription": "Write, edit, and review developer documentation following the Google developer documentation style guide, with separate English and Japanese skills.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Review this README against the Google style guide"
+    ],
+    "brandColor": "#34A853"
+  }
+}

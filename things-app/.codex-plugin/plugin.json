@@ -1,0 +1,37 @@
+{
+  "name": "things-app",
+  "version": "0.7.6",
+  "description": "Read and update tasks in Things 3",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "things",
+    "todo",
+    "task",
+    "applescript",
+    "jxa"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/things-app",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Things 3",
+    "shortDescription": "Manage Things 3 tasks",
+    "longDescription": "Read and update personal tasks in the Things 3 app on macOS: triage the inbox, review today's list, create tasks with project/area/tags/dates, and complete them.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://culturedcode.com/things/",
+    "defaultPrompt": [
+      "Show my Things tasks for today",
+      "Triage my Things inbox"
+    ],
+    "brandColor": "#1A79D0"
+  }
+}

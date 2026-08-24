@@ -1,0 +1,143 @@
+{
+  "actions-ubuntu-slim-migration": {
+    "displayName": "ubuntu-slim Migration",
+    "shortDescription": "Migrate Actions runners to ubuntu-slim",
+    "longDescription": "Analyze GitHub Actions workflows and migrate them from ubuntu-latest to ubuntu-slim, adding back only the tooling each job actually needs to cut runner cost.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Migrate my workflows to ubuntu-slim"],
+    "brandColor": "#2088FF"
+  },
+  "cloud-logging": {
+    "displayName": "Cloud Logging",
+    "shortDescription": "Investigate Google Cloud Logging",
+    "longDescription": "Query and narrow down Google Cloud Logging entries with an approach that keeps large log volumes from flooding the context window.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read"],
+    "defaultPrompt": ["Investigate errors in Cloud Logging for this service"],
+    "brandColor": "#4285F4"
+  },
+  "codex": {
+    "displayName": "Codex CLI",
+    "shortDescription": "Second opinion from Codex CLI",
+    "longDescription": "Ask the OpenAI Codex CLI for an autonomous second opinion, or run its built-in read-only review mode over the current changes.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read"],
+    "defaultPrompt": ["Review my current changes with Codex"],
+    "brandColor": "#000000"
+  },
+  "difit": {
+    "displayName": "difit Review",
+    "shortDescription": "Round-trip code review in difit",
+    "longDescription": "Open a diff in difit and round-trip review comments between the local reviewer UI and the agent.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": ["Open this diff in difit for review"],
+    "brandColor": "#F05033"
+  },
+  "github-copilot": {
+    "displayName": "GitHub Copilot",
+    "shortDescription": "Second opinion and PR reviews",
+    "longDescription": "Ask the GitHub Copilot CLI for a second AI opinion, or request a Copilot review on a pull request.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Ask Copilot to review this change"],
+    "brandColor": "#24292F"
+  },
+  "google-style-guide": {
+    "displayName": "Google Style Guide",
+    "shortDescription": "Docs in Google developer style",
+    "longDescription": "Write, edit, and review developer documentation following the Google developer documentation style guide, with separate English and Japanese skills.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Review this README against the Google style guide"],
+    "brandColor": "#34A853"
+  },
+  "hydra-experiment": {
+    "displayName": "Hydra Experiments",
+    "shortDescription": "Manage ML runs with Hydra",
+    "longDescription": "Set up and run machine learning experiments managed by Hydra, covering config composition, sweeps, and run layout.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Set up Hydra config for this training script"],
+    "brandColor": "#89B4FA"
+  },
+  "jupyter": {
+    "displayName": "Jupyter Remote Kernel",
+    "shortDescription": "Local notebooks, remote kernel",
+    "longDescription": "Run local notebooks against a remote Jupyter Server kernel (RunPod, GCP, or self-hosted) through jupyter-mcp-server, including SSH tunnel setup.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Connect this notebook to my remote Jupyter kernel"],
+    "brandColor": "#F37626"
+  },
+  "kaggle-helper": {
+    "displayName": "Kaggle Helper",
+    "shortDescription": "Research Kaggle competitions",
+    "longDescription": "Analyze Kaggle discussions and notebooks, and explore the Meta Kaggle dataset, to research a competition.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "defaultPrompt": ["Summarize the top discussions for this competition"],
+    "brandColor": "#20BEFF"
+  },
+  "runpod": {
+    "displayName": "RunPod",
+    "shortDescription": "Manage RunPod GPU pods",
+    "longDescription": "Manage RunPod GPU cloud resources: create pods, check GPU availability, and upload models to a Network Volume.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Check RunPod GPU availability"],
+    "brandColor": "#673AB7"
+  },
+  "things-app": {
+    "displayName": "Things 3",
+    "shortDescription": "Manage Things 3 tasks",
+    "longDescription": "Read and update personal tasks in the Things 3 app on macOS: triage the inbox, review today's list, create tasks with project/area/tags/dates, and complete them.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://culturedcode.com/things/",
+    "defaultPrompt": ["Show my Things tasks for today", "Triage my Things inbox"],
+    "brandColor": "#1A79D0"
+  },
+  "uv-features": {
+    "displayName": "uv Features",
+    "shortDescription": "Use uv's lesser-known capabilities",
+    "longDescription": "Nudges the agent toward powerful uv capabilities instead of plain pip/python: PEP 723 inline script metadata, uv run --with, uvx for one-off CLI tools, and multi-stage Docker builds.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "defaultPrompt": ["Turn this script into a PEP 723 self-contained script", "Write a uv-based multi-stage Dockerfile"],
+    "brandColor": "#261230"
+  },
+  "vertexai-gemini-batch": {
+    "displayName": "Vertex AI Gemini Batch",
+    "shortDescription": "Run Gemini batch predictions",
+    "longDescription": "Generate batch input files and run Vertex AI Batch Prediction jobs for Gemini models.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Set up a Gemini batch prediction job"],
+    "brandColor": "#4285F4"
+  },
+  "zoom": {
+    "displayName": "Zoom Recordings",
+    "shortDescription": "Extract Zoom transcripts",
+    "longDescription": "Extract transcripts and download videos from Zoom recording share pages.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "defaultPrompt": ["Get the transcript from this Zoom recording"],
+    "brandColor": "#0B5CFF"
+  }
+}

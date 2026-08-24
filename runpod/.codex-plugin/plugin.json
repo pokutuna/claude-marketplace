@@ -1,0 +1,35 @@
+{
+  "name": "runpod",
+  "version": "0.8.5",
+  "description": "RunPod GPU cloud management plugin for Claude Code.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "runpod",
+    "gpu",
+    "cloud",
+    "machine-learning",
+    "s3",
+    "network-volume"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/runpod",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "RunPod",
+    "shortDescription": "Manage RunPod GPU pods",
+    "longDescription": "Manage RunPod GPU cloud resources: create pods, check GPU availability, and upload models to a Network Volume.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Check RunPod GPU availability"
+    ],
+    "brandColor": "#673AB7"
+  }
+}

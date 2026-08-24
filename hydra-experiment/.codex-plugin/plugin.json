@@ -1,0 +1,27 @@
+{
+  "name": "hydra-experiment",
+  "version": "0.2.2",
+  "description": "Hydra を使った機械学習実験管理のセットアップと実行をガイドするプラグイン",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/hydra-experiment",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Hydra Experiments",
+    "shortDescription": "Manage ML runs with Hydra",
+    "longDescription": "Set up and run machine learning experiments managed by Hydra, covering config composition, sweeps, and run layout.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Set up Hydra config for this training script"
+    ],
+    "brandColor": "#89B4FA"
+  }
+}

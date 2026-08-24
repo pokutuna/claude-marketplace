@@ -1,0 +1,33 @@
+{
+  "name": "difit",
+  "version": "0.4.0",
+  "description": "Round-trip code review with difit.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/difit",
+  "keywords": [
+    "difit",
+    "code-review",
+    "diff"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "difit Review",
+    "shortDescription": "Round-trip code review in difit",
+    "longDescription": "Open a diff in difit and round-trip review comments between the local reviewer UI and the agent.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Open this diff in difit for review"
+    ],
+    "brandColor": "#F05033"
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "name": "pokutuna-plugins",
+  "interface": {
+    "displayName": "pokutuna plugins"
+  },
+  "plugins": [
+    {
+      "name": "actions-ubuntu-slim-migration",
+      "source": {
+        "source": "local",
+        "path": "./actions-ubuntu-slim-migration"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "cloud-logging",
+      "source": {
+        "source": "local",
+        "path": "./cloud-logging"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "codex",
+      "source": {
+        "source": "local",
+        "path": "./codex"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "difit",
+      "source": {
+        "source": "local",
+        "path": "./difit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "github-copilot",
+      "source": {
+        "source": "local",
+        "path": "./github-copilot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "google-style-guide",
+      "source": {
+        "source": "local",
+        "path": "./google-style-guide"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "hydra-experiment",
+      "source": {
+        "source": "local",
+        "path": "./hydra-experiment"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "jupyter",
+      "source": {
+        "source": "local",
+        "path": "./jupyter"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "kaggle-helper",
+      "source": {
+        "source": "local",
+        "path": "./kaggle-helper"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "runpod",
+      "source": {
+        "source": "local",
+        "path": "./runpod"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "things-app",
+      "source": {
+        "source": "local",
+        "path": "./things-app"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "uv-features",
+      "source": {
+        "source": "local",
+        "path": "./uv-features"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "vertexai-gemini-batch",
+      "source": {
+        "source": "local",
+        "path": "./vertexai-gemini-batch"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "zoom",
+      "source": {
+        "source": "local",
+        "path": "./zoom"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

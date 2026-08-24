@@ -1,0 +1,35 @@
+{
+  "name": "github-copilot",
+  "version": "0.4.7",
+  "description": "GitHub Copilot CLI integration — second AI opinion and PR review requests",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/github-copilot",
+  "keywords": [
+    "copilot",
+    "review",
+    "code-review",
+    "github",
+    "second-opinion",
+    "pull-request"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GitHub Copilot",
+    "shortDescription": "Second opinion and PR reviews",
+    "longDescription": "Ask the GitHub Copilot CLI for a second AI opinion, or request a Copilot review on a pull request.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Ask Copilot to review this change"
+    ],
+    "brandColor": "#24292F"
+  }
+}

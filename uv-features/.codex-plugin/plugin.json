@@ -1,0 +1,34 @@
+{
+  "name": "uv-features",
+  "version": "0.1.1",
+  "description": "Recommend lesser-known uv features like PEP 723 inline scripts, uv run --with, uvx, and more. Nudges Claude to use powerful uv capabilities instead of plain pip/python.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "python",
+    "uv",
+    "pep723",
+    "scripts",
+    "packaging"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/uv-features",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "uv Features",
+    "shortDescription": "Use uv's lesser-known capabilities",
+    "longDescription": "Nudges the agent toward powerful uv capabilities instead of plain pip/python: PEP 723 inline script metadata, uv run --with, uvx for one-off CLI tools, and multi-stage Docker builds.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Turn this script into a PEP 723 self-contained script",
+      "Write a uv-based multi-stage Dockerfile"
+    ],
+    "brandColor": "#261230"
+  }
+}

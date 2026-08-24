@@ -1,0 +1,36 @@
+{
+  "name": "zoom",
+  "version": "0.2.0",
+  "description": "Extract transcripts and download videos from Zoom recording share pages",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "zoom",
+    "transcript",
+    "recording",
+    "vtt",
+    "video",
+    "download",
+    "mp4",
+    "playwright"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/zoom",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Zoom Recordings",
+    "shortDescription": "Extract Zoom transcripts",
+    "longDescription": "Extract transcripts and download videos from Zoom recording share pages.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Get the transcript from this Zoom recording"
+    ],
+    "brandColor": "#0B5CFF"
+  }
+}
