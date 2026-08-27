@@ -130,6 +130,16 @@
     "defaultPrompt": ["Set up a Gemini batch prediction job"],
     "brandColor": "#4285F4"
   },
+  "x-research": {
+    "displayName": "X Research",
+    "shortDescription": "Research X via the Grok API",
+    "longDescription": "Research a topic on X (Twitter) through the xAI Grok API's x_search tool, returning a report backed by verbatim quotes from the actual posts and citation-verified links.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Research this topic on X and show me the source posts"],
+    "brandColor": "#000000"
+  },
   "zoom": {
     "displayName": "Zoom Recordings",
     "shortDescription": "Extract Zoom transcripts",

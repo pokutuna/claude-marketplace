@@ -1,0 +1,35 @@
+{
+  "name": "x-research",
+  "version": "0.1.0",
+  "description": "Research X (Twitter) via the xAI Grok API x_search tool and answer with citation-verified quotes and links",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "x",
+    "twitter",
+    "grok",
+    "xai",
+    "research",
+    "social-media"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/x-research",
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "X Research",
+    "shortDescription": "Research X via the Grok API",
+    "longDescription": "Research a topic on X (Twitter) through the xAI Grok API's x_search tool, returning a report backed by verbatim quotes from the actual posts and citation-verified links.",
+    "developerName": "pokutuna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Research this topic on X and show me the source posts"
+    ],
+    "brandColor": "#000000"
+  }
+}

@@ -133,6 +133,12 @@
       "description": "Write or fix developer documentation following the Google developer documentation style guide (English and Japanese skills)",
       "source": "./google-style-guide",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/google-style-guide"
+    },
+    {
+      "name": "x-research",
+      "description": "Research X (Twitter) via the xAI Grok API x_search tool and answer with citation-verified quotes and links",
+      "source": "./x-research",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/x-research"
     }
   ]
 }

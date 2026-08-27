@@ -1,0 +1,16 @@
+{
+  "name": "x-research",
+  "version": "0.1.0",
+  "description": "Research X (Twitter) via the xAI Grok API x_search tool and answer with citation-verified quotes and links",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "x",
+    "twitter",
+    "grok",
+    "xai",
+    "research",
+    "social-media"
+  ]
+}
