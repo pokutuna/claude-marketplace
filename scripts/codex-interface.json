@@ -1,4 +1,14 @@
 {
+  "runbook": {
+    "displayName": "Runbook",
+    "shortDescription": "Write executable runbooks",
+    "longDescription": "Create and review concise runbooks that run top to bottom without judgment from whoever executes them, settling every decision as you write instead of leaving it to the person running the procedure.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Create a runbook for this task"],
+    "brandColor": "#2563EB"
+  },
   "actions-ubuntu-slim-migration": {
     "displayName": "ubuntu-slim Migration",
     "shortDescription": "Migrate Actions runners to ubuntu-slim",

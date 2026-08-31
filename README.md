@@ -58,3 +58,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [jupyter](./jupyter/) | Run local notebooks on a remote Jupyter Server's kernel (GPU) via jupyter-mcp-server (SSH tunnel support) |
 | [google-style-guide](./google-style-guide/) | Write or fix developer docs following the Google developer documentation style guide (en/ja skills) |
 | [x-research](./x-research/) | Research X (Twitter) via the xAI Grok API x_search tool and answer with citation-verified quotes and links |
+| [runbook](./runbook/) | Create and review runbooks that run top to bottom without judgment from whoever executes them |

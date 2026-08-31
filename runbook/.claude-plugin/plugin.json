@@ -1,0 +1,15 @@
+{
+  "name": "runbook",
+  "version": "0.1.0",
+  "description": "Create and review runbooks that run top to bottom without judgment from whoever executes them.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "runbook",
+    "procedure",
+    "handoff",
+    "task-instructions"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/runbook"
+}

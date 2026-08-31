@@ -1,0 +1,33 @@
+{
+  "name": "runbook",
+  "version": "0.1.0",
+  "description": "Create and review runbooks that run top to bottom without judgment from whoever executes them.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/runbook",
+  "keywords": [
+    "runbook",
+    "procedure",
+    "handoff",
+    "task-instructions"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Runbook",
+    "shortDescription": "Write executable runbooks",
+    "longDescription": "Create and review concise runbooks that run top to bottom without judgment from whoever executes them, settling every decision as you write instead of leaving it to the person running the procedure.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Create a runbook for this task"
+    ],
+    "brandColor": "#2563EB"
+  }
+}
