@@ -5,13 +5,14 @@
  *   - ヘッダー: header.dg-header > span + span。左は分類やテーマ、右は日付・版・実験番号など文書を特定する印
  *   - 見出し: h2 (節) / h3 (小節)。main 内の見出しには anchor.js が # リンクを付け、id が無ければ生成する
  *   - 用語集: aside > (h2, dl > dt + dd)
- *   - 本文:   p, a, strong, em, ul/ol, blockquote(+ .dg-translation, cite), abbr, hr
+ *   - 本文:   p, a, strong, em, ul/ol, blockquote(+ .dg-translation, cite), abbr
+ *   - 区切り: hr (h1 の下線と同じアクセント色)
  *   - 部品:   .dg-note[data-label]? (強調), .dg-sub[data-label]? (補助情報), .dg-card, .dg-grid, .dg-chip, .dg-steps
  *   - 表:     table (thead th = 列見出し, tbody th = 行見出し), .dg-table-scroll
  *   - 幅:     .dg-wide を figure / .dg-table-scroll / table / pre / .dg-grid に付けると画面幅に広がる
  *   - コード: pre > code.language-*, pre.dg-diff > code > span.add/.del/.ctx (copy.js が copy ボタンを付ける)
  *   - 図:     figure > (svg | img | pre.dg-mermaid), figcaption
- *             svg 内の色: .fill .muted .link .accent、系列の色分け .c1〜.c5 (.dg-chip にも可)
+ *             svg 内の色: .fill .muted .accent1 .accent2、系列の色分け .c1〜.c5 (.dg-chip にも可)
  *   - 数式:   $...$, $$...$$ (math.js が copy ボタンを付ける)
  * 用語集 aside があれば 2 カラム、なければ 1 カラム。切り替えクラスは無い。
  */
@@ -31,8 +32,10 @@
   --dg-muted: #6B7280;
   --dg-border: #1F2937;
   --dg-rule: #E3E5E8;
-  --dg-link: #008080;    /* teal: リンク・キーワード・コードの予約語 */
-  --dg-accent: #B45309;  /* amber: 強調・コードの文字列/数値 */
+  /* 有彩色は accent1 / accent2 の 2 色。用途ごとの別名はこの 2 つを指す */
+  --dg-accent1: #008080;  /* teal: divider・ラベル・番号・キーワード */
+  --dg-accent2: #B45309;  /* amber: 強調・コードの文字列/数値 */
+  --dg-link: var(--dg-accent1);
 
   /* 差分専用の機能色。本文の装飾には使わない */
   --dg-add-bg: #E6F4EA;
@@ -62,8 +65,8 @@
   --dg-muted: #9AA3AF;
   --dg-border: #4A5262;
   --dg-rule: #353B45;
-  --dg-link: #2DD4BF;
-  --dg-accent: #F0A82C;
+  --dg-accent1: #2DD4BF;
+  --dg-accent2: #F0A82C;
 
   --dg-add-bg: #12261A;
   --dg-add-ink: #7EE2A8;
@@ -86,8 +89,8 @@
     --dg-muted: #9AA3AF;
     --dg-border: #4A5262;
     --dg-rule: #353B45;
-    --dg-link: #2DD4BF;
-    --dg-accent: #F0A82C;
+    --dg-accent1: #2DD4BF;
+    --dg-accent2: #F0A82C;
 
     --dg-add-bg: #12261A;
     --dg-add-ink: #7EE2A8;
@@ -225,15 +228,14 @@ h1 {
   font-size: 34px;
   margin: 0 0 14px;
   padding-bottom: 12px;
-  color: var(--dg-link);
-  border-bottom: var(--dg-border-w) solid var(--dg-rule);
+  border-bottom: var(--dg-border-w) solid var(--dg-accent1);
 }
 
 h2 {
   font-size: 21px;
   margin: 44px 0 14px;
   padding-left: 14px;
-  border-left: 8px solid var(--dg-link);
+  border-left: 8px solid var(--dg-accent1);
 }
 
 h3 { font-size: 17px; margin: 28px 0 10px; }
@@ -245,7 +247,7 @@ h2, h3 { scroll-margin-top: 16px; }
   font-family: var(--dg-font-mono);
   font-size: 0.8em;
   font-weight: 400;
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   opacity: 0;
   transition: opacity 0.12s;
 }
@@ -275,7 +277,7 @@ strong { color: var(--dg-ink); font-weight: 700; }
 em {
   font-style: normal;
   font-weight: 700;
-  color: var(--dg-accent);
+  color: var(--dg-accent2);
 }
 
 ul, ol { padding-left: 1.6em; margin: 12px 0; }
@@ -283,15 +285,17 @@ li { margin: 4px 0; }
 li::marker { color: var(--dg-muted); }
 li > ul, li > ol { margin: 4px 0; }
 
+/* 区切り線。h1 の下線と役割が同じなので accent1 で揃える。
+   アクセント色で目立つため、使いどころは component-samples.html で絞ってある */
 hr {
   border: none;
-  border-top: var(--dg-border-w) solid var(--dg-rule);
+  border-top: var(--dg-border-w) solid var(--dg-accent1);
   margin: 36px 0;
 }
 
 abbr[title] { text-decoration: underline dotted; cursor: help; }
 
-::selection { background: color-mix(in srgb, var(--dg-link) 26%, transparent); }
+::selection { background: color-mix(in srgb, var(--dg-accent1) 26%, transparent); }
 
 /* ============================================================
    Steps - 番号付き手順。ol.dg-steps > li
@@ -318,10 +322,10 @@ ol.dg-steps > li::before {
   height: 28px;
   display: grid;
   place-items: center;
-  border: var(--dg-border-w) solid var(--dg-link);
+  border: var(--dg-border-w) solid var(--dg-accent1);
   border-radius: 50%;
   background: var(--dg-surface);
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   font-family: var(--dg-font-mono);
   font-size: 13px;
   line-height: 1;
@@ -350,7 +354,7 @@ ol.dg-steps > li::before {
 .dg-grid > .dg-card { margin: 0; }
 
 /* ============================================================
-   Note - data-label が見出しになる (要約 / 注意 / 制限 / 前提 ...)
+   Note - data-label がブロックの見出しになる (注意 / 制限 / 前提 ...)
    ============================================================ */
 
 /* 強調: 白地に枠。data-label があれば枠にまたがる teal のタグが付く */
@@ -373,7 +377,7 @@ ol.dg-steps > li::before {
   left: 16px;
   padding: 2px 10px;
   border-radius: 4px;
-  background: var(--dg-link);
+  background: var(--dg-accent1);
   color: var(--dg-bg);
   font-size: 13px;
   font-weight: 700;
@@ -394,7 +398,7 @@ ol.dg-steps > li::before {
   display: block;
   font-size: 15.5px;
   font-weight: 700;
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   margin-bottom: 6px;
 }
 .dg-sub > :first-child { margin-top: 0; }
@@ -417,7 +421,7 @@ nav.dg-toc::before {
   display: block;
   font-size: 15.5px;
   font-weight: 700;
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   margin-bottom: 6px;
 }
 nav.dg-toc > ol {
@@ -432,7 +436,7 @@ nav.dg-toc > ol > li::before {
   content: counter(toc, decimal-leading-zero);
   font-family: var(--dg-font-mono);
   font-size: 12.5px;
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   margin-right: .8em;
 }
 nav.dg-toc ol ol { list-style: none; margin: 0; }
@@ -600,13 +604,13 @@ pre code {
 
 .hljs-keyword, .hljs-selector-tag, .hljs-built_in,
 .hljs-type, .hljs-name, .hljs-section {
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   font-weight: 700;
 }
 
 .hljs-string, .hljs-attr, .hljs-literal,
 .hljs-number, .hljs-regexp, .hljs-symbol, .hljs-bullet {
-  color: var(--dg-accent);
+  color: var(--dg-accent2);
 }
 
 .hljs-title, .hljs-title.function_, .hljs-variable, .hljs-params,
@@ -684,8 +688,8 @@ figure svg {
 figure svg text { fill: currentColor; stroke: none; }
 figure svg .fill { fill: currentColor; stroke: none; }
 figure svg .muted { color: var(--dg-muted); }
-figure svg .link { color: var(--dg-link); }
-figure svg .accent { color: var(--dg-accent); }
+figure svg .accent1 { color: var(--dg-accent1); }
+figure svg .accent2 { color: var(--dg-accent2); }
 
 /* 系列の色分け。figure svg と .dg-chip の中だけ有効。c1 から順に使う */
 figure svg .c1, .dg-chip.c1 { color: var(--dg-c1); }
@@ -736,7 +740,7 @@ div.dg-mermaid > svg { display: block; margin: 0 auto; max-width: 100%; height: 
   cursor: pointer;
 }
 .dg-copy:hover { color: var(--dg-ink); border-color: var(--dg-border); }
-.dg-copy:focus-visible { outline: 2px solid var(--dg-link); outline-offset: 2px; }
+.dg-copy:focus-visible { outline: 2px solid var(--dg-accent1); outline-offset: 2px; }
 
 div.dg-mermaid > .dg-copy { position: absolute; top: 8px; right: 8px; opacity: 0; }
 div.dg-mermaid:hover > .dg-copy,
@@ -789,15 +793,15 @@ div.dg-mermaid:focus-within > .dg-copy { opacity: 1; }
   height: 34px;
   display: grid;
   place-items: center;
-  border: var(--dg-border-w) solid var(--dg-link);
+  border: var(--dg-border-w) solid var(--dg-accent1);
   border-radius: 50%;
   background: var(--dg-surface);
-  color: var(--dg-link);
+  color: var(--dg-accent1);
   cursor: pointer;
   padding: 0;
 }
 .dg-theme-toggle:hover { background: var(--dg-surface-alt); }
-.dg-theme-toggle:focus-visible { outline: 2px solid var(--dg-link); outline-offset: 2px; }
+.dg-theme-toggle:focus-visible { outline: 2px solid var(--dg-accent1); outline-offset: 2px; }
 .dg-theme-toggle svg { width: 17px; height: 17px; display: block; }
 
 /* ============================================================
@@ -816,8 +820,8 @@ div.dg-mermaid:focus-within > .dg-copy { opacity: 1; }
     --dg-muted: #555555;
     --dg-border: #000000;
     --dg-rule: #BBBBBB;
-    --dg-link: #005F5F;
-    --dg-accent: #8A3F07;
+    --dg-accent1: #005F5F;
+    --dg-accent2: #8A3F07;
   }
 
   body { font-size: 10.5pt; line-height: 1.7; background: #fff; }
