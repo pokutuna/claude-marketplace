@@ -1,6 +1,6 @@
 ---
 name: difit-review
-description: Round-trip code review through difit. Use when the user mentions "difit", "diff review", "open the diff", "let me look at this", or "review this PR locally". Launch mode arg — "open" (default, no comments at launch), "explain" (AI annotates its own change), "review" (AI posts findings on human code).
+description: 'Round-trip code review through difit, a local diff viewer. Use when the user mentions "difit", "diff review", "open the diff", or "review this PR locally".'
 metadata:
   author: pokutuna
 allowed-tools:

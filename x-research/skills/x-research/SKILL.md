@@ -1,6 +1,6 @@
 ---
 name: x-research
-description: 'Research a topic on X (Twitter) via the xAI Grok API x_search tool and answer with a report plus verbatim quotes from the actual posts and their links. Use whenever the user wants something looked up on X: technical information gathering (new papers, model releases, benchmark numbers, implementation know-how shared by practitioners), reactions and reputation, an account''s recent posts, or real-time chatter. Triggers: "X で調べて", "Twitter を調査して", "ソース付きで", "根拠となる発言も出して", "@handle が何て言ってるか", "最近の論文/モデルの話題", "研究者が何と言っているか", "search X for", "what are people posting about", "sourced posts". Requires XAI_API_KEY.'
+description: 'Research a topic on X (Twitter) via the xAI Grok API x_search tool and report with verbatim quotes and links from the actual posts. Use when the user wants something looked up on X: technical information, reactions and reputation, an account''s recent posts, or real-time chatter. Triggers: "X で調べて", "Twitter を調査して", "ソース付きで", "@handle が何て言ってるか", "研究者が何と言っているか", "search X for", "what are people posting about".'
 argument-hint: "[調査したいこと] [--from DATE] [--to DATE] [-y]"
 allowed-tools:
   - Bash(uv run ${CLAUDE_PLUGIN_ROOT}/skills/x-research/scripts/search.py *)
