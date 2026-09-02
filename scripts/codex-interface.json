@@ -1,4 +1,14 @@
 {
+  "docgen": {
+    "displayName": "docgen",
+    "shortDescription": "Write single-file HTML documents",
+    "longDescription": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy, and a stdlib-only bundler.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": ["Explain this concept as an HTML document"],
+    "brandColor": "#008080"
+  },
   "runbook": {
     "displayName": "Runbook",
     "shortDescription": "Write executable runbooks",

@@ -1,0 +1,17 @@
+{
+  "name": "docgen",
+  "version": "0.1.0",
+  "description": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy, and a stdlib-only bundler.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "keywords": [
+    "html",
+    "document",
+    "design-system",
+    "mathjax",
+    "mermaid",
+    "dark-mode"
+  ],
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/docgen"
+}

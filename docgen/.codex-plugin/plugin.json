@@ -1,0 +1,35 @@
+{
+  "name": "docgen",
+  "version": "0.1.0",
+  "description": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy, and a stdlib-only bundler.",
+  "author": {
+    "name": "pokutuna"
+  },
+  "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/docgen",
+  "keywords": [
+    "html",
+    "document",
+    "design-system",
+    "mathjax",
+    "mermaid",
+    "dark-mode"
+  ],
+  "repository": "https://github.com/pokutuna/claude-plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "docgen",
+    "shortDescription": "Write single-file HTML documents",
+    "longDescription": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy, and a stdlib-only bundler.",
+    "developerName": "pokutuna",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Explain this concept as an HTML document"
+    ],
+    "brandColor": "#008080"
+  }
+}

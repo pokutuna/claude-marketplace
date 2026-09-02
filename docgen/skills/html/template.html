@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>題名</title>
+<!-- 以下の読み込みは順序ごと固定。theme.js は CSS の直後、copy.js と anchor.js はその次、math.js は MathJax の前、mermaid.js は mermaid の後 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu+Sans:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./design-system/document.css">
+<script src="./design-system/theme.js"></script>
+<script src="./design-system/copy.js"></script>
+<script src="./design-system/anchor.js"></script>
+<script src="./design-system/math.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { hljs.highlightAll(); });</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
+<script src="./design-system/mermaid.js"></script>
+</head>
+<body>
+<div class="dg-page">
+
+<header class="dg-header">
+  <span>分類 / テーマ</span>
+  <span>日付・版・実験番号など</span>
+</header>
+
+<h1>題名</h1>
+<p class="dg-lede">この文書が何を説明するかを 1〜2 文で。</p>
+
+<nav class="dg-toc">
+  <ol>
+    <li><a href="#s1">節 1</a></li>
+    <li><a href="#s2">節 2</a></li>
+  </ol>
+</nav>
+
+<div class="dg-wrap">
+<main>
+
+<h2 id="s1">節 1</h2>
+<p>本文。</p>
+
+<h2 id="s2">節 2</h2>
+<p>本文。</p>
+
+</main>
+
+<!-- 用語集が要らなければ aside ごと消す。1 カラムに切り替わる -->
+<aside>
+  <h2>用語</h2>
+  <dl>
+    <dt>用語</dt><dd>定義。</dd>
+  </dl>
+</aside>
+</div>
+
+<footer class="dg-footer">出所・作成日</footer>
+</div>
+</body>
+</html>

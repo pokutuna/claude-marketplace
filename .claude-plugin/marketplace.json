@@ -145,6 +145,12 @@
       "description": "Create and review runbooks that run top to bottom without judgment from whoever executes them",
       "source": "./runbook",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/runbook"
+    },
+    {
+      "name": "docgen",
+      "description": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy",
+      "source": "./docgen",
+      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/docgen"
     }
   ]
 }
