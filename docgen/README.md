@@ -33,7 +33,7 @@
 
 | Script | 用途 |
 |--------|------|
-| `scripts/bundle.py` | HTML と `design-system/` を 1 ファイルにまとめる。標準ライブラリのみ |
+| `scripts/bundle.py` | HTML と `design-system/` を 1 ファイルにまとめる。標準ライブラリのみ。`--offline` では埋め込んだライブラリの名前・版・ライセンスをフッターと HTML コメントに記す |
 | `scripts/screenshot.sh` | headless Chrome でライト / ダークの PNG を撮る。目視確認用 |
 
 ```

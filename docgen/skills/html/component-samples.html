@@ -33,6 +33,9 @@
 <h1>docgen HTML ドキュメント デザインシステム</h1>
 <p class="dg-lede">HTML ドキュメントで使える部品と、その書き方の一覧。マークアップはこのページを正とする。書き手が付けるクラスは <code>dg-</code> で始まるものと、図・差分・コードの補助クラス (<code>fill</code>、<code>accent1</code>、<code>c1</code>、<code>add</code>、<code>language-*</code> など各節で示す) だけで、それ以外は素の要素にそのまま効く。</p>
 
+
+<div class="dg-wrap">
+<main>
 <nav class="dg-toc">
   <ol>
     <li><a href="#layout">レイアウト</a></li>
@@ -43,19 +46,52 @@
     <li><a href="#tokens">色のトークン</a></li>
     <li><a href="#figure">図</a></li>
     <li><a href="#math">数式</a></li>
+    <li><a href="#automatic">自動で追加される要素</a></li>
   </ol>
 </nav>
 
-<div class="dg-wrap">
-<main>
-
 <h2 id="layout">レイアウト</h2>
-<p>骨格は <code>.dg-page</code> の中に、ヘッダー、<code>h1</code>、リード文、目次、<code>.dg-wrap</code>、フッターを並べる。<code>.dg-wrap</code> の中は <code>main</code> と、任意の <code>aside</code> (用語集) の 2 つだけ。用語集は <code>dl</code> に <code>dt</code> と <code>dd</code> を並べる。<code>aside</code> があれば 2 カラム、なければ本文の行長を抑えた 1 カラムになる。切り替えのためのクラスは無い。</p>
-<p>ヘッダーは <code>span</code> 2 つ。左に分類やテーマ、右に日付・版・実験番号など、その文書を特定する印を置く。</p>
-<p>ダークモードの切り替えボタンはマークアップに書かない。theme.js が <code>body</code> に <code>button.dg-theme-toggle</code> を追加し、ウィンドウの右上に固定表示する。選択は localStorage に保存され、次回から描画前に反映される。</p>
-<p>見出しは <code>h2</code> を節に、<code>h3</code> を小節に使う。目次の項目は <code>h2</code> の <code>id</code> に対応させる。</p>
-<h3>小節の見出し</h3>
-<p>見出しに乗せると右に <code>#</code> が現れ、その見出しへのリンクになる。<code>id</code> を書かなかった見出しには文面から <code>id</code> が付く。</p>
+
+<h3>基本構造</h3>
+<p><code>template.html</code> の要素と順序を保ち、次の骨格に本文を入れる。用語集を置く場合だけ <code>aside</code> を残す。</p>
+<pre><code class="language-html">&lt;div class="dg-page"&gt;
+  &lt;header class="dg-header"&gt;...&lt;/header&gt;
+  &lt;h1&gt;題名&lt;/h1&gt;
+  &lt;p class="dg-lede"&gt;概要&lt;/p&gt;
+
+  &lt;div class="dg-wrap"&gt;
+    &lt;main&gt;
+      &lt;nav class="dg-toc"&gt;...&lt;/nav&gt;
+      &lt;h2 id="section-id"&gt;節&lt;/h2&gt;
+      ...
+    &lt;/main&gt;
+    &lt;aside&gt;...&lt;/aside&gt;
+  &lt;/div&gt;
+
+  &lt;footer class="dg-footer"&gt;...&lt;/footer&gt;
+&lt;/div&gt;</code></pre>
+
+<table>
+  <caption>レイアウトを構成する要素</caption>
+  <thead>
+    <tr><th>要素</th><th>配置と内容</th><th>省略</th></tr>
+  </thead>
+  <tbody>
+    <tr><th><code>header.dg-header</code></th><td><code>span</code> を 2 つ置く。左は分類やテーマ、右は日付・版・実験番号など文書を特定する印</td><td>不可</td></tr>
+    <tr><th><code>h1</code></th><td>文書の題名。<code>header</code> の直後</td><td>不可</td></tr>
+    <tr><th><code>p.dg-lede</code></th><td>文書の概要を 1〜2 文で示す。<code>h1</code> の直後</td><td>不可</td></tr>
+    <tr><th><code>div.dg-wrap</code></th><td><code>main</code> と、任意の <code>aside</code> だけを入れる</td><td>不可</td></tr>
+    <tr><th><code>main</code></th><td>目次と本文。目次は先頭に置く</td><td>不可</td></tr>
+    <tr><th><code>aside</code></th><td>用語集。<code>dl</code> に <code>dt</code> と <code>dd</code> を並べる</td><td>用語集がなければ要素ごと省略</td></tr>
+    <tr><th><code>footer.dg-footer</code></th><td><code>span</code> を 2 つ置く。左は文書の出所と作成日、右は docgen へのリンク。テンプレートの内容を保つ</td><td>不可</td></tr>
+  </tbody>
+</table>
+
+<p><code>aside</code> があれば、用語集は目次の横に同じ高さから始まり、全体が 2 カラムになる。<code>aside</code> がなければ、本文の行長を抑えた 1 カラムになる。カラム数を指定するクラスは使わない。</p>
+
+<h3>見出しと目次</h3>
+<p>節は <code>h2</code>、小節は <code>h3</code> にする。目次の各リンクは、対応する <code>h2</code> の <code>id</code> を参照する。</p>
+<p>見出しにポインターを乗せると、右にその見出しへの <code>#</code> リンクが現れる。<code>id</code> のない見出しには、anchor.js が文面をもとに <code>id</code> を付ける。</p>
 
 <h2 id="blocks">ブロック</h2>
 
@@ -297,6 +333,10 @@ sequenceDiagram
 $$W_{\mathrm{wide}} = \min\left(W_{\mathrm{viewport}} - 64\,\mathrm{px},\ 1600\,\mathrm{px}\right)$$
 <p>どちらも hover で copy ボタンが出て、デリミタ込みの LaTeX を取り出せる。</p>
 
+<h2 id="automatic">自動で追加される要素</h2>
+<p>ダークモードの切り替えボタンは theme.js が <code>body</code> に <code>button.dg-theme-toggle</code> として追加する。選択したテーマは localStorage に保存され、次回から描画前に反映される。</p>
+<p><code>bundle.py --offline</code> は、埋め込んだライブラリの名前・版・ライセンスをフッターへ <code>Embedded:</code> の行として追記する。</p>
+
 
 </main>
 
@@ -312,7 +352,10 @@ $$W_{\mathrm{wide}} = \min\left(W_{\mathrm{viewport}} - 64\,\mathrm{px},\ 1600\,
 </aside>
 </div>
 
-<footer class="dg-footer">docgen design system</footer>
+<footer class="dg-footer">
+  <span>docgen design system, 2026-09-03</span>
+  <span><a href="https://github.com/pokutuna/claude-plugins/tree/main/docgen">docgen@pokutuna-plugins</a></span>
+</footer>
 </div>
 </body>
 </html>

@@ -11,6 +11,10 @@ downloaded and embedded too (fonts included, so expect several MB).
 --no-webfonts drops the Google Fonts <link> so the document falls back to system
 fonts; combine it with --offline for a compact offline file.
 
+With --offline, the third-party libraries that were embedded are credited in
+footer.dg-footer (name, version, license, linked) and listed with their source
+URLs in an HTML comment after <!doctype>, so the file carries its notices.
+
 Only the standard library is used.
 
 Processing order is fixed: stylesheets -> images -> scripts. Scripts go last so
@@ -194,6 +198,45 @@ def process(html: str, base: Path, offline: bool, no_webfonts: bool) -> str:
     return html
 
 
+# ---- Credits ---------------------------------------------------------------
+
+# (url substring, display name, homepage, license)
+KNOWN_LIBS = (
+    ("mathjax", "MathJax", "https://www.mathjax.org/", "Apache-2.0"),
+    ("highlight.js", "highlight.js", "https://highlightjs.org/", "BSD-3-Clause"),
+    ("mermaid", "Mermaid", "https://mermaid.js.org/", "MIT"),
+    ("fonts.googleapis.com", "Google Fonts", "https://fonts.google.com/", "OFL-1.1 / UFL-1.0"),
+)
+VERSION_RE = re.compile(r"[@/](\d+\.\d+\.\d+)(?=[/.]|$)")
+FOOTER_RE = re.compile(r"(<footer\b[^>]*\bdg-footer\b[^>]*>)(.*?)(</footer>)", re.I | re.S)
+
+
+def credits(urls: list[str]) -> list[tuple[str, str, str, str, str]]:
+    """(name, version, homepage, license, source url) for each known library fetched."""
+    seen: dict[str, tuple] = {}
+    for u in urls:
+        for key, name, home, lic in KNOWN_LIBS:
+            if key in u and name not in seen:
+                m = VERSION_RE.search(u)
+                seen[name] = (name, m.group(1) if m else "", home, lic, u)
+    return [seen[n] for _, n, _, _ in KNOWN_LIBS if n in seen]
+
+
+def add_credits(html: str, items: list[tuple[str, str, str, str, str]]) -> str:
+    if not items:
+        return html
+    links = " · ".join(
+        f'<a href="{home}">{name}{" " + ver if ver else ""}</a> ({lic})'
+        for name, ver, home, lic, _ in items)
+    span = f'<span class="dg-credits">Embedded: {links}</span>'
+    html, n = FOOTER_RE.subn(lambda m: f"{m.group(1)}{m.group(2).rstrip()}\n  {span}\n{m.group(3)}", html, count=1)
+    if n == 0:
+        log("  warning: no footer.dg-footer, credits not shown on page")
+    lines = "\n".join(f"  {name} {ver} ({lic}) {home}\n    from {src}" for name, ver, home, lic, src in items)
+    comment = f"<!--\nEmbedded third-party libraries:\n{lines}\n-->"
+    return re.sub(r"(<!doctype[^>]*>)", lambda m: f"{m.group(1)}\n{comment}", html, count=1, flags=re.I)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("input", type=Path)
@@ -213,6 +256,8 @@ def main() -> int:
 
     log(f"bundle {src.name}" + (" (offline)" if ns.offline else ""))
     html = process(src.read_text(encoding="utf-8"), src.parent, ns.offline, ns.no_webfonts)
+    if ns.offline:
+        html = add_credits(html, credits(list(_cache)))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     fonts = sum(1 for u in _cache if "fonts.gstatic.com" in u)

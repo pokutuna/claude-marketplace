@@ -2,8 +2,9 @@
  *
  * 書き手が付けるクラスは dg-* と、svg / diff / コードの補助クラス (.fill .muted .accent1 .accent2 .c1〜.c5 / .add .del .ctx / language-*) だけ。
  * それ以外の見た目は要素そのものに効く。
- *   - 骨格:   .dg-page > (header.dg-header, h1, p.dg-lede, nav.dg-toc, .dg-wrap > (main, aside?), footer.dg-footer)
- *   - ヘッダー: header.dg-header > span + span。左は分類やテーマ、右は日付・版・実験番号など文書を特定する印
+ *   - 骨格:   .dg-page > (header.dg-header, h1, p.dg-lede, .dg-wrap > (main > (nav.dg-toc, ...), aside?), footer.dg-footer)
+ *  *   - ヘッダー: header.dg-header > span + span。左は分類やテーマ、右は日付・版・実験番号など文書を特定する印
+ *   - フッター: footer.dg-footer > span + span。左は文書の出所と作成日、右は生成元 (docgen へのリンク)
  *   - 見出し: h2 (節) / h3 (小節)。main 内の見出しには anchor.js が # リンクを付け、id が無ければ生成する
  *   - 用語集: aside > (h2, dl > dt + dd)
  *   - 本文:   p, a, strong, em, ul/ol, blockquote(+ .dg-translation, cite), abbr
@@ -215,12 +216,17 @@ aside {
 }
 
 .dg-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
   margin-top: 56px;
   padding-top: 20px;
   border-top: var(--dg-border-w) solid var(--dg-rule);
   color: var(--dg-muted);
   font-size: 13px;
 }
+.dg-footer .dg-credits { flex-basis: 100%; }
 
 /* ============================================================
    Headings
@@ -422,7 +428,7 @@ nav.dg-toc {
   background: var(--dg-surface-alt);
   border-radius: var(--dg-radius);
   padding: 16px 20px;
-  margin: 24px 0 0;
+  margin: 0 0 40px; /* main の先頭に置く。用語集の上端と揃う */
   font-size: 14.5px;
   line-height: 1.7;
 }
