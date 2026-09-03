@@ -11,3 +11,7 @@ __pycache__/
 # API keys (local only)
 XAI
 .env
+
+# docgen: screenshot.sh の出力
+*.light.png
+*.dark.png

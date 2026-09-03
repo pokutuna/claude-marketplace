@@ -7,16 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Sans:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./document.css">
-<script src="./theme.js"></script>
-<script src="./copy.js"></script>
-<script src="./anchor.js"></script>
-<script src="./math.js"></script>
+<link rel="stylesheet" href="./design-system/document.css">
+<script src="./design-system/theme.js"></script>
+<script src="./design-system/copy.js"></script>
+<script src="./design-system/anchor.js"></script>
+<script src="./design-system/math.js"></script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script>document.addEventListener('DOMContentLoaded', function () { hljs.highlightAll(); });</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
-<script src="./mermaid.js"></script>
+<script src="./design-system/mermaid.js"></script>
 <style>
   /* このページ固有: トークンの色見本 */
   .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--dg-rule); vertical-align: middle; }
@@ -31,7 +31,7 @@
 </header>
 
 <h1>docgen HTML ドキュメント デザインシステム</h1>
-<p class="dg-lede">HTML ドキュメントで使える部品と、その書き方の一覧。マークアップはこのページを正とする。書き手が付けるクラスは <code>dg-</code> で始まるものだけで、それ以外は素の要素にそのまま効く。</p>
+<p class="dg-lede">HTML ドキュメントで使える部品と、その書き方の一覧。マークアップはこのページを正とする。書き手が付けるクラスは <code>dg-</code> で始まるものと、図・差分・コードの補助クラス (<code>fill</code>、<code>accent1</code>、<code>c1</code>、<code>add</code>、<code>language-*</code> など各節で示す) だけで、それ以外は素の要素にそのまま効く。</p>
 
 <nav class="dg-toc">
   <ol>
@@ -59,7 +59,7 @@
 
 <h2 id="blocks">ブロック</h2>
 
-<p>ブロックは 2 種類。読み飛ばしてほしくない内容は <code>.dg-note</code> に入れる。白地に枠で本文から浮き、<code>data-label</code> を書くと枠にまたがるタグが付く。ラベルはそのブロックの見出しで、中身を要約せず何の話かを示す。ラベルの語で種別を示すので、色は変えない。</p>
+<p>ブロックは 2 種類。読み飛ばしてほしくない内容は <code>.dg-note</code> に入れる。部品の面に枠が付いて本文から浮き、<code>data-label</code> を書くと枠にまたがるタグが付く。ラベルはそのブロックの見出しで、中身を要約せず何の話かを示す。ラベルの語で種別を示すので、色は変えない。</p>
 
 <div class="dg-note" data-label="前提">
   <p><code>.dg-note</code> は注意、制限、前提などに使う。</p>
@@ -166,7 +166,7 @@
   &lt;p&gt;バンドラは stdlib だけで動く。外部パッケージは使えない。&lt;/p&gt;
 &lt;/div&gt;</code></pre>
 
-<p>差分は <code>pre.dg-diff</code> に書き、各行を <code>span.add</code>、<code>span.del</code>、<code>span.ctx</code> で包む。行頭の記号は CSS が付けるので書かない。緑と赤はこの部品だけの機能色。</p>
+<p>差分は <code>pre.dg-diff</code> に書き、各行を <code>span.add</code>、<code>span.del</code>、<code>span.ctx</code> で包む。行頭の記号は CSS が付けるので書かない。<code>code</code> は <code>nohighlight</code> にして、Highlight.js が span を壊さないようにする。緑と赤はこの部品だけの機能色。</p>
 <pre class="dg-diff"><code class="nohighlight"><span class="ctx">aside table {</span>
 <span class="del">  white-space: nowrap;</span>
 <span class="add">  table-layout: fixed;</span>
@@ -230,7 +230,7 @@
   <figcaption>図 2. 系列色 <code>c1</code>〜<code>c5</code>。塗りは <code>fill</code> を併記、線は色クラスだけ。</figcaption>
 </figure>
 
-<p>横に大きいものは <code>.dg-wide</code> を付けると、本文を離れて画面幅いっぱい (上限 1600px) に広がる。1 枚の横長画像なら <code>figure.dg-wide</code>、複数の図や画像を並べるなら <code>.dg-grid.dg-wide</code> の中に <code>figure</code> を置く。画像は <code>img</code> をそのまま入れる。</p>
+<p>横に大きいものは <code>.dg-wide</code> を付けると、本文を離れて画面幅いっぱい (上限 1600px) に広がる。1 枚の横長画像なら <code>figure.dg-wide</code>、複数の図や画像を並べるなら <code>.dg-grid.dg-wide</code> の中に <code>figure</code> を置く。列の多い表やコードにも <code>.dg-table-scroll</code>、<code>table</code>、<code>pre</code> に付けて使える。画像は <code>img</code> をそのまま入れる。</p>
 <div class="dg-grid dg-wide">
   <figure>
     <svg viewBox="0 0 480 320" width="100%" role="img" aria-label="画像のプレースホルダ a">

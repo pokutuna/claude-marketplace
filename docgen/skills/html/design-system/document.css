@@ -1,6 +1,7 @@
 /* docgen design system
  *
- * 書き手が付けるクラスは dg-* だけ。それ以外の見た目は要素そのものに効く。
+ * 書き手が付けるクラスは dg-* と、svg / diff / コードの補助クラス (.fill .muted .accent1 .accent2 .c1〜.c5 / .add .del .ctx / language-*) だけ。
+ * それ以外の見た目は要素そのものに効く。
  *   - 骨格:   .dg-page > (header.dg-header, h1, p.dg-lede, nav.dg-toc, .dg-wrap > (main, aside?), footer.dg-footer)
  *   - ヘッダー: header.dg-header > span + span。左は分類やテーマ、右は日付・版・実験番号など文書を特定する印
  *   - 見出し: h2 (節) / h3 (小節)。main 内の見出しには anchor.js が # リンクを付け、id が無ければ生成する
@@ -293,7 +294,7 @@ li::marker { color: var(--dg-muted); }
 li > ul, li > ol { margin: 4px 0; }
 
 /* 区切り線。h1 の下線と役割が同じなので accent1 で揃える。
-   アクセント色で目立つため、使いどころは component-samples.html で絞ってある */
+   アクセント色で目立つため、使いどころは ../component-samples.html で絞ってある */
 hr {
   border: none;
   border-top: var(--dg-border-w) solid var(--dg-accent1);
@@ -366,7 +367,7 @@ ol.dg-steps > li::before {
    Note - data-label がブロックの見出しになる (注意 / 制限 / 前提 ...)
    ============================================================ */
 
-/* 強調: 白地に枠。data-label があれば枠にまたがる teal のタグが付く */
+/* 強調: 面 (--dg-surface) に枠。data-label があれば枠にまたがる teal のタグが付く */
 .dg-note {
   position: relative;
   background: var(--dg-surface);

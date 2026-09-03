@@ -1,7 +1,7 @@
 # デザインシステム
 
 `document.css` と付属の JS が持つ規則をまとめた開発者向けの資料。書き手 (エージェント) 向けの
-指示は `../SKILL.md` と `component-samples.html` にあり、こちらはその土台を変更する人が読む。
+指示は `../SKILL.md` と `../component-samples.html` にあり、こちらはその土台を変更する人が読む。
 
 ## 構成
 
@@ -13,12 +13,14 @@
 | `anchor.js` | `main` 内の h2 / h3 にアンカーリンクと id を付ける |
 | `math.js` | MathJax の設定と数式の copy ボタン |
 | `mermaid.js` | Mermaid のテーマ設定、再描画、原文の copy ボタン |
-| `component-samples.html` | 全部品の見本。マークアップの正 |
+| `../component-samples.html` | 全部品の見本。マークアップの正。コピー対象ではないのでこの外に置く |
 
 ## トークン
 
 色と寸法はすべて `:root` の CSS 変数で、ダークは `:root[data-theme="dark"]` と
 `@media (prefers-color-scheme: dark)` の両方に同じ値を書く。片方だけ変えない。
+メディアクエリ側は `:root:not([data-theme="light"])` に限定する。この条件がないと、OS がダークのとき
+ボタンでライトに固定できない。
 
 ### 面と文字
 
@@ -33,8 +35,8 @@
 | `--dg-border` | 部品の外枠、表の外枠、列見出しの下線 |
 | `--dg-rule` | 細い罫線。表の内側、用語集の区切り |
 
-ダークでは背景と面のコントラストを 1.15:1 まで落とすとブロックが沈む。現在の値
-(`#1A1D22` / `#232830` / `#4A5262`) はその段差を確保したもの。
+ダークでは背景と面のコントラストを 1.15:1 まで落とすとブロックが沈む。現在の背景 `#1A1D22` と
+面 `#232830` はその段差を確保したもの。
 
 ### 有彩色
 
@@ -69,7 +71,7 @@ accent2 に orange `#C2410C` を選ぶと色相 17° が diff の削除色と衝
 
 強調 (`.dg-note`) と補助情報 (`.dg-sub`) の 2 種類を持つ。色では区別せず、面と枠で区別する。
 
-- `.dg-note` は白地に枠。`data-label` があると枠にまたがる teal のタグが `::before` で付く。
+- `.dg-note` は `--dg-surface` の面に枠。`data-label` があると枠にまたがる teal のタグが `::before` で付く。
   ラベルはブロックの見出しで、中身の要約ではない。タグの分だけ上に余白が要るので、
   `[data-label]` のときだけ `margin-top` と `padding-top` を増やす
 - `.dg-sub` は `--dg-surface-alt` の面で枠を持たない。ラベルは本文と同じ大きさの teal 太字
@@ -98,6 +100,6 @@ h1 の下線と `hr` はどちらも文書を区切る線なので、同じ `--d
 
 - `pre.dg-diff` の中は `code` を `white-space: normal` にして、span 間の改行を折りたたむ。
   これがないと span を改行で区切って書いたときに 1 行おきに空行が入る
-- 部品を追加したら `component-samples.html` にも実例を置く。見本にない部品は動作が確認されない
+- 部品を追加したら `../component-samples.html` にも実例を置く。見本にない部品は動作が確認されない
 - 変更後は `scripts/screenshot.sh` でライトとダークを描画して目視する。DOM 検査では
   レイアウトの崩れも色の不在も捕まえられない

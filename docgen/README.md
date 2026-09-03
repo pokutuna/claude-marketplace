@@ -1,7 +1,7 @@
 # docgen
 
-テキストベースの成果物を作る Claude Code プラグイン。現在は HTML ドキュメントを書く `html`
-スキルを提供する。
+テキストベースの成果物を作る Claude Code プラグイン。日本語の文章規範と HTML ドキュメントの
+デザインシステムを提供する。
 
 見た目の判断はデザインシステム側が済ませていて、書き手は `dg-` クラスを当てるだけで
 一貫した文書になる。成果物は既定で単一の HTML ファイル。
@@ -10,11 +10,12 @@
 
 | Skill | Description |
 |-------|-------------|
-| `html` | 概念・仕組み・調査結果を単一ファイルの HTML ドキュメントとして作成・編集する |
+| `html` | 概念・仕組み・調査結果をHTML ドキュメントとして作成・編集する (既定は単一ファイルに bundle) |
+| `writing` | 日本語の説明文や技術文書を明確で自然な文章として作成・推敲する |
 
 ## デザインシステム
 
-`skills/html/design-system/` にある。部品と書き方は `component-samples.html` を正とする。
+`skills/html/design-system/` にある。部品と書き方は `skills/html/component-samples.html` を正とする。
 トークンと内部の規則は `design-system/DESIGN_SYSTEM.md` にまとめてある。
 書き始めは `skills/html/template.html` をコピーする (`<head>` の読み込み順と骨格が入っている)。
 
