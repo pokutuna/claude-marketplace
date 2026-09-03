@@ -169,6 +169,13 @@ aside {
   position: relative;
   z-index: 2;
   background: var(--dg-bg);
+  /* 背景は境界ボックスまでしか塗られない。上下を margin だけで空けると、
+     隣り合う .dg-wide の隙間から用語集が覗く。余白を透明な border に置き換えて
+     塗る範囲を広げ、隙間を無くす。margin と違い border は相殺されない */
+  margin-top: 0;
+  margin-bottom: 0;
+  border-top: 24px solid transparent;
+  border-bottom: 24px solid transparent;
 }
 .dg-page:not(:has(aside)) .dg-wide {
   --dg-main-left: calc(max(0px, (100vw - var(--dg-measure)) / 2) + 48px);
@@ -317,9 +324,11 @@ ol.dg-steps > li::before {
   content: counter(steps);
   position: absolute;
   left: 0;
-  top: 0.15em;
-  width: 28px;
-  height: 28px;
+  /* 本文 1 行 (16px * 1.85 = 29.6px) の中央に円を合わせる。
+     (29.6 - 24) / 2 = 2.8px から、視覚的な中心が下寄りに見える分を 1px 引く */
+  top: 1.8px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border: var(--dg-border-w) solid var(--dg-accent1);
@@ -327,7 +336,7 @@ ol.dg-steps > li::before {
   background: var(--dg-surface);
   color: var(--dg-accent1);
   font-family: var(--dg-font-mono);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1;
 }
 
