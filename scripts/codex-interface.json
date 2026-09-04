@@ -2,7 +2,7 @@
   "docgen": {
     "displayName": "docgen",
     "shortDescription": "Write single-file HTML documents",
-    "longDescription": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy, and a stdlib-only bundler.",
+    "longDescription": "日本語の文章規範と説明ドキュメントの構成、単一ファイル HTML のデザインシステム",
     "developerName": "pokutuna",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],

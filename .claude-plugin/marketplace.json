@@ -148,7 +148,7 @@
     },
     {
       "name": "docgen",
-      "description": "Write self-contained HTML documents with a fixed design system: dark mode, glossary sidebar, MathJax with TeX copy, Mermaid with source copy",
+      "description": "日本語の文章規範と説明ドキュメントの構成、単一ファイル HTML のデザインシステム",
       "source": "./docgen",
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/docgen"
     }

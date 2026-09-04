@@ -1,6 +1,6 @@
 ---
 name: writing
-description: 日本語の技術文書を明確で自然な文章として作成・推敲する。記事、ガイド、設計文書、レポートなどを書くときに使う。
+description: 日本語の技術文書の文章規範。日本語で書くとき、推敲や校正のときに読む。
 metadata:
   inspired:
     - https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d

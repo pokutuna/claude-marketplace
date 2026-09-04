@@ -59,4 +59,4 @@ Project-scoped installation has known bugs that prevent installing the same plug
 | [google-style-guide](./google-style-guide/) | Write or fix developer docs following the Google developer documentation style guide (en/ja skills) |
 | [x-research](./x-research/) | Research X (Twitter) via the xAI Grok API x_search tool and answer with citation-verified quotes and links |
 | [runbook](./runbook/) | Create and review runbooks that run top to bottom without judgment from whoever executes them |
-| [docgen](./docgen/) | Write self-contained HTML documents with a fixed design system (dark mode, glossary, MathJax, Mermaid) |
+| [docgen](./docgen/) | Write text deliverables — Japanese writing conventions, explanatory structure, and a single-file HTML design system |
