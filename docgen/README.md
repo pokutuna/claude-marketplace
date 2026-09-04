@@ -8,9 +8,9 @@
 
 | Skill | Description |
 |-------|-------------|
-| `explain` | 説明ドキュメントの構成 |
-| `writing` | 日本語の文章規範 |
-| `html` | 単一ファイル HTML の作成・編集 |
+| [`explain`](skills/explain/SKILL.md) | 説明ドキュメントの構成 |
+| [`writing`](skills/writing/SKILL.md) | 日本語の文章規範 |
+| [`html`](skills/html/SKILL.md) | 単一ファイル HTML の作成・編集 |
 
 ## デザインシステム
 
@@ -43,6 +43,6 @@ screenshot.sh <input.html> [--dark] [--no-network] [--width N] [--height N] [-o 
 
 ## Prior work
 
-- [mathbullet/skills](https://github.com/mathbullet/skills/blob/main/plugins/html/skills/html/SKILL.md)
-  - 構造・style を参考に実装
-- [japanese-tech-writing/SKILL](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d)
+- [mathbullet/skills](https://github.com/mathbullet/skills/blob/main/plugins/html/skills/html/SKILL.md)（Hayate Funakura / `@mathbullet`）
+  - skill、design-system を参考に `html` を実装
+- [japanese-tech-writing/SKILL](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d)（Keiichiro Shikano / `@k16shikano`）
