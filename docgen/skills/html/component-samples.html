@@ -6,7 +6,7 @@
 <title>docgen HTML ドキュメント デザインシステム</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Ubuntu+Sans:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./design-system/document.css">
 <script src="./design-system/theme.js"></script>
 <script src="./design-system/copy.js"></script>
@@ -39,8 +39,8 @@
 <nav class="dg-toc">
   <ol>
     <li><a href="#layout">レイアウト</a></li>
-    <li><a href="#blocks">ブロック</a></li>
     <li><a href="#text">本文</a></li>
+    <li><a href="#blocks">ブロック</a></li>
     <li><a href="#table">表</a></li>
     <li><a href="#code">コード</a></li>
     <li><a href="#tokens">色のトークン</a></li>
@@ -93,9 +93,42 @@
 <p>節は <code>h2</code>、小節は <code>h3</code> にする。目次の各リンクは、対応する <code>h2</code> の <code>id</code> を参照する。</p>
 <p>見出しにポインターを乗せると、右にその見出しへの <code>#</code> リンクが現れる。<code>id</code> のない見出しには、anchor.js が文面をもとに <code>id</code> を付ける。</p>
 
+<h2 id="text">本文</h2>
+<p>段落には <a href="https://example.com/docs">リンク</a>、<strong>strong (黒の太字)</strong>、<em>em (アクセント色)</em>、<code>インラインコード</code> を使える。<abbr title="Cascading Style Sheets">CSS</abbr> のような略語は <code>abbr</code> に <code>title</code> を付ける。アクセント色の強調は、節ごとに 1 箇所を目安にする。</p>
+<p>並列の固有名やファイル名は chip で並べる:
+  <span class="dg-chip">template.html</span>
+  <span class="dg-chip">document.css</span>
+  <span class="dg-chip">bundle.py</span>
+</p>
+<p>図と対応する系列を区別したい chip にだけ <code>c1</code>〜<code>c5</code> を順に付ける:
+  <span class="dg-chip c1">構造</span>
+  <span class="dg-chip c2">文字</span>
+  <span class="dg-chip c3">表</span>
+  <span class="dg-chip c4">図</span>
+  <span class="dg-chip c5">コード</span>
+</p>
+<ul>
+  <li>箇条書きは素の <code>ul</code> と <code>ol</code> を使う
+    <ul><li>入れ子もそのまま書ける</li></ul>
+  </li>
+  <li>順番に意味のある手順は次の <code>ol.dg-steps</code> にする</li>
+</ul>
+
+<ol class="dg-steps">
+  <li>テンプレートとデザインシステムをコピーして、分離した状態で原稿を書く。</li>
+  <li><code>screenshot.sh</code> でライトとダークを描画し、画像を目で確認する。</li>
+  <li><code>bundle.py</code> で単一ファイルにまとめ、納品物をもう一度描画する。</li>
+</ol>
+
+<p>区切り線は <code>hr</code> で引く。h1 の下線と同じアクセント色で、文書の中では目立つ線になる。節の分かれ目は <code>h2</code> が示すので <code>hr</code> は要らない。見出しを立てるほどではないが話の向きが変わる、という切れ目にだけ置く。1 つの文書で数本を上限と考え、段落の間隔を空けたいだけのときや、箇条書きと本文の境目には使わない。</p>
+
+<hr>
+
+<p>区切り線の後の段落。</p>
+
 <h2 id="blocks">ブロック</h2>
 
-<p>ブロックは 2 種類。読み飛ばしてほしくない内容は <code>.dg-note</code> に入れる。部品の面に枠が付いて本文から浮き、<code>data-label</code> を書くと枠にまたがるタグが付く。ラベルはそのブロックの見出しで、中身を要約せず何の話かを示す。ラベルの語で種別を示すので、色は変えない。</p>
+<p>強調・補足ブロックは 2 種類。読み飛ばしてほしくない内容は <code>.dg-note</code> に入れる。部品の面に枠が付いて本文から浮き、<code>data-label</code> を書くと枠にまたがるタグが付く。ラベルはそのブロックの見出しで、中身を要約せず何の話かを示す。ラベルの語で種別を示すので、色は変えない。</p>
 
 <div class="dg-note" data-label="前提">
   <p><code>.dg-note</code> は注意、制限、前提などに使う。</p>
@@ -133,39 +166,6 @@
   <p class="dg-translation">スキルは、Claude が特定のタスクでの性能を上げるために動的に読み込む、指示・スクリプト・リソースをまとめたフォルダである。</p>
   <cite><a href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview">Anthropic, Agent Skills overview</a>, 2025</cite>
 </blockquote>
-
-<h2 id="text">本文</h2>
-<p>段落には <a href="https://example.com/docs">リンク</a>、<strong>strong (黒の太字)</strong>、<em>em (アクセント色)</em>、<code>インラインコード</code> を使える。<abbr title="Cascading Style Sheets">CSS</abbr> のような略語は <code>abbr</code> に <code>title</code> を付ける。アクセント色の強調は、節ごとに 1 箇所を目安にする。</p>
-<p>並列の固有名やファイル名は chip で並べる:
-  <span class="dg-chip">template.html</span>
-  <span class="dg-chip">document.css</span>
-  <span class="dg-chip">bundle.py</span>
-</p>
-<p>図と対応する系列を区別したい chip にだけ <code>c1</code>〜<code>c5</code> を順に付ける:
-  <span class="dg-chip c1">構造</span>
-  <span class="dg-chip c2">文字</span>
-  <span class="dg-chip c3">表</span>
-  <span class="dg-chip c4">図</span>
-  <span class="dg-chip c5">コード</span>
-</p>
-<ul>
-  <li>箇条書きは素の <code>ul</code> と <code>ol</code> を使う
-    <ul><li>入れ子もそのまま書ける</li></ul>
-  </li>
-  <li>順番に意味のある手順は次の <code>ol.dg-steps</code> にする</li>
-</ul>
-
-<ol class="dg-steps">
-  <li>テンプレートとデザインシステムをコピーして、分離した状態で原稿を書く。</li>
-  <li><code>screenshot.sh</code> でライトとダークを描画し、画像を目で確認する。</li>
-  <li><code>bundle.py</code> で単一ファイルにまとめ、納品物をもう一度描画する。</li>
-</ol>
-
-<p>区切り線は <code>hr</code> で引く。h1 の下線と同じアクセント色で、文書の中では目立つ線になる。節の分かれ目は <code>h2</code> が示すので <code>hr</code> は要らない。見出しを立てるほどではないが話の向きが変わる、という切れ目にだけ置く。1 つの文書で数本を上限と考え、段落の間隔を空けたいだけのときや、箇条書きと本文の境目には使わない。</p>
-
-<hr>
-
-<p>区切り線の後の段落。</p>
 
 <h2 id="table">表</h2>
 <p>列見出しは <code>thead</code> の <code>th</code>、行見出しは <code>tbody</code> の <code>th</code> に書く。列幅は固定レイアウトで確定させるので、長い語があっても表は溢れない。説明は <code>caption</code> に書く。</p>

@@ -51,8 +51,8 @@
   --dg-c4: #EC4899;
   --dg-c5: #7C3AED;
 
-  --dg-font-sans: "Ubuntu Sans", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
-  --dg-font-mono: "Ubuntu Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --dg-font-sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  --dg-font-mono: "Ubuntu Mono", "Noto Sans JP", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --dg-radius: 10px;
   --dg-border-w: 1.5px;
   --dg-measure: 820px; /* 用語集なしのページ幅 */

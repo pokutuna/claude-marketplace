@@ -61,8 +61,8 @@ accent2 に orange `#C2410C` を選ぶと色相 17° が diff の削除色と衝
 
 | トークン | 用途 |
 | --- | --- |
-| `--dg-font-sans` | 本文の書体 (Ubuntu Sans + Noto Sans JP) |
-| `--dg-font-mono` | コード、ヘッダー、番号の書体 (Ubuntu Mono) |
+| `--dg-font-sans` | 本文の書体 (Noto Sans JP) |
+| `--dg-font-mono` | コード、ヘッダー、番号の書体 (Ubuntu Mono。日本語は Noto Sans JP) |
 | `--dg-radius` | 部品の角丸 |
 | `--dg-border-w` | 枠線と罫線の太さ |
 | `--dg-measure` | 用語集なしのときのページ幅 |
