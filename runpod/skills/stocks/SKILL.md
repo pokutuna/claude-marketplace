@@ -1,9 +1,7 @@
 ---
 name: stocks
 description: Query RunPod GPU availability and suggest matching GPUs/datacenters.
-metadata:
-  author: pokutuna
-  compatibility: RunPod API (requires ~/.runpod/config.toml or RUNPOD_API_KEY)
+compatibility: RunPod API (requires ~/.runpod/config.toml or RUNPOD_API_KEY)
 allowed-tools: "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/stocks/scripts/fetch_gpu_stocks.py *)"
 ---
 

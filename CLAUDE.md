@@ -7,6 +7,9 @@ A marketplace repository hosting multiple Claude Code plugins.
 - Plugin guide: `docs/PLUGIN_GUIDE.md`
 - Skills guide: `docs/The-Complete-Guide-to-Building-Skills-for-Claude.md`
   - If this file is missing, convert https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf to Markdown faithfully and place it there
+- Skill format spec: https://agentskills.io/specification
+  - `SKILL.md` frontmatter is defined there. `compatibility` is a top-level field;
+    `metadata` holds only properties the spec does not define
 - Checklist: `docs/CHECKLIST.md`
 
 ## Codex Support

@@ -7,9 +7,7 @@ allowed-tools:
   - Read
   - Write
   - AskUserQuestion
-metadata:
-  author: pokutuna
-  compatibility: Requires uv and XAI_API_KEY (prepaid credits at console.x.ai)
+compatibility: Requires uv and XAI_API_KEY (prepaid credits at console.x.ai)
 ---
 
 # X (Twitter) Research via xAI Grok API

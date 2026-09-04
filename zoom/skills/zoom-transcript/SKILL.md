@@ -1,9 +1,7 @@
 ---
 name: zoom-transcript
 description: Extract VTT transcript from a Zoom recording share page. "zoom transcript", "zoom 文字起こし" などで起動。
-metadata:
-  author: pokutuna
-  compatibility: Requires playwright-cli or playwright MCP server (@playwright/mcp)
+compatibility: Requires playwright-cli or playwright MCP server (@playwright/mcp)
 allowed-tools: "Bash(playwright-cli open *),Bash(playwright-cli goto *),Bash(playwright-cli snapshot *),Bash(playwright-cli fill *),Bash(playwright-cli click *),Bash(playwright-cli network *),Bash(playwright-cli run-code *),Bash(playwright-cli close *),mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_fill_form,mcp__playwright__browser_click,mcp__playwright__browser_network_requests,mcp__playwright__browser_run_code,mcp__playwright__browser_close"
 ---
 

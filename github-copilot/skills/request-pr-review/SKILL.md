@@ -2,9 +2,7 @@
 name: request-pr-review
 description: Request GitHub Copilot review on a Pull Request. "PR レビュー依頼", "copilot review" などで起動。
 argument-hint: "[pr-number | url | branch]"
-metadata:
-  author: pokutuna
-  compatibility: GitHub CLI (gh) v2.88.0+ installed and authenticated
+compatibility: GitHub CLI (gh) v2.88.0+ installed and authenticated
 allowed-tools:
   - Bash(gh pr view*)
   - Bash(gh pr edit*)

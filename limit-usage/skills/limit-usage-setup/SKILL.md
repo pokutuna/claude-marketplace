@@ -3,8 +3,6 @@ name: limit-usage-setup
 description: Install or uninstall the limit-usage statusLine wrapper (edits settings.json).
 disable-model-invocation: true
 argument-hint: "install | uninstall"
-metadata:
-  author: pokutuna
 allowed-tools:
   - "Bash(CLAUDE_PLUGIN_DATA=* CLAUDE_PLUGIN_ROOT=* ${CLAUDE_PLUGIN_ROOT}/bin/guard.sh *)"
   - Read

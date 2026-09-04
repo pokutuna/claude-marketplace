@@ -1,8 +1,6 @@
 ---
 name: write-runbook
 description: Create or review a runbook — an executable procedure someone else follows from top to bottom without judgment of their own. "runbook", "RUNBOOK.md", "手順書", "作業依頼" で起動。
-metadata:
-  author: pokutuna
 ---
 
 # Write Runbook

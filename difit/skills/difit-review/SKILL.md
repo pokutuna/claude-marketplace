@@ -1,8 +1,6 @@
 ---
 name: difit-review
 description: 'Round-trip code review through difit, a local diff viewer. Use when the user mentions "difit", "diff review", "open the diff", or "review this PR locally".'
-metadata:
-  author: pokutuna
 allowed-tools:
   - "Bash(${CLAUDE_PLUGIN_ROOT}/bin/difit-comments *)"
   - "Bash(difit *)"

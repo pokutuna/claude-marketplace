@@ -1,8 +1,6 @@
 ---
 name: create-pod
 description: Create RunPod GPU/CPU pods from runpod.toml. "create pod", "launch pod", "pod 立てて" などで起動。
-metadata:
-  author: pokutuna
 allowed-tools:
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_pod.py:*)"
   - "Bash(uv run --script ${CLAUDE_PLUGIN_ROOT}/skills/create-pod/scripts/create_cpu_pod.py:*)"

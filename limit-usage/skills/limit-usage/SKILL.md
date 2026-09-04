@@ -3,8 +3,6 @@ name: limit-usage
 description: Stop tool execution before exhausting your Claude usage — set a 5h/7d usage-% or per-session cost threshold.
 disable-model-invocation: true
 argument-hint: "5h=80 7d=90 | cost=$5 | clear | status"
-metadata:
-  author: pokutuna
 allowed-tools:
   - "Bash(CLAUDE_SESSION_ID=* CLAUDE_PLUGIN_ROOT=* ${CLAUDE_PLUGIN_ROOT}/bin/guard.sh *)"
 ---

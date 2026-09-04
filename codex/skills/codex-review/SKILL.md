@@ -2,9 +2,7 @@
 name: codex-review
 description: Review the current changes with Codex CLI's built-in review mode, read-only. 「Codex でレビュー」「Codex にセカンドオピニオンを求める」などで起動。
 argument-hint: "[--uncommitted | base <branch> | commit <sha>] [focus] [--model NAME] [--effort LEVEL] [-y]"
-metadata:
-  author: pokutuna
-  compatibility: Codex CLI installed and authenticated
+compatibility: Codex CLI installed and authenticated
 allowed-tools:
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/share-path.sh)
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-codex.sh *)

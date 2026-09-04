@@ -1,9 +1,7 @@
 ---
 name: zoom-video-download
 description: Download the video (MP4) from a Zoom recording share page. "zoom video download", "zoom 録画 ダウンロード", "zoom 動画 ダウンロード" などで起動。
-metadata:
-  author: pokutuna
-  compatibility: Requires playwright-cli (or playwright MCP), uv, and curl
+compatibility: Requires playwright-cli (or playwright MCP), uv, and curl
 allowed-tools: "Bash(uv run *),Bash(playwright-cli *),Bash(curl *),Bash(python3 *),mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_fill_form,mcp__playwright__browser_click,mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code,mcp__playwright__browser_close"
 ---
 

@@ -4,9 +4,7 @@ description: >-
   Toggle Claude Code plugins enabled/disabled per project.
 argument-hint: "list | enable <plugin> | disable <plugin> [--local]"
 model_invocation: false
-metadata:
-  author: pokutuna
-  compatibility: ">=1.0.0"
+compatibility: ">=1.0.0"
 allowed-tools:
   - Bash(${CLAUDE_PLUGIN_ROOT}/bin/toggle-plugin.sh *)
 ---

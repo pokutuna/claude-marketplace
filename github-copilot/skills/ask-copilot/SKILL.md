@@ -2,9 +2,7 @@
 name: ask-copilot
 description: Ask GitHub Copilot CLI for a second AI opinion. "ask copilot", "copilot と相談" などで起動。
 argument-hint: "[target] [focus] [--model NAME] [--effort LEVEL] [-y]"
-metadata:
-  author: pokutuna
-  compatibility: GitHub Copilot CLI installed and authenticated
+compatibility: GitHub Copilot CLI installed and authenticated
 allowed-tools:
   - Bash(copilot *)
   - Bash(bash ${CLAUDE_SKILL_DIR}/scripts/share-path.sh)

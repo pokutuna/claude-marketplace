@@ -1,9 +1,7 @@
 ---
 name: prepare-model-upload
 description: Upload HuggingFace models from Colab to RunPod Network Volume.
-metadata:
-  author: pokutuna
-  compatibility: Google Colab, RunPod Network Volume with S3 API
+compatibility: Google Colab, RunPod Network Volume with S3 API
 ---
 
 # Colab → RunPod Network Volume Model Upload

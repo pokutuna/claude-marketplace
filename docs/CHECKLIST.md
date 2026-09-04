@@ -18,7 +18,10 @@ Checklist for adding or updating plugins.
 ## Skill
 
 - [ ] Create `skills/<skill-name>/SKILL.md`
-  - frontmatter: name, description, metadata (author, compatibility)
+  - frontmatter: name, description (both required). Add `compatibility` at the top level
+    only when the skill needs specific tools or an environment; most skills do not
+  - `metadata` is for properties the Agent Skills spec does not define. Do not put
+    `compatibility` under it, and do not add `author` (the plugin manifest already carries it)
   - Do NOT add `version` to SKILL.md. Versioning is managed only in `plugin.json` (Claude Code resolves the plugin version from `plugin.json` → marketplace entry → git SHA; SKILL.md `version` is never used for update detection)
   - Include trigger words in description
 - [ ] Reference scripts with `${CLAUDE_PLUGIN_ROOT}`

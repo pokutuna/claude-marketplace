@@ -3,8 +3,6 @@ name: side-fork
 description: Fork the current Claude session into a new tmux or screen window.
 allowed-tools: "Bash(${CLAUDE_PLUGIN_ROOT}/bin/side-fork.sh *)"
 disable-model-invocation: true
-metadata:
-  author: pokutuna
 ---
 # side-fork
 

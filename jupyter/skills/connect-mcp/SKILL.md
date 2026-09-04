@@ -2,9 +2,7 @@
 name: connect-mcp
 description: Run this project's notebooks on a remote Jupyter Server's kernel (GPU) via jupyter-mcp-server. Accepts an SSH command (auto tunnel) or a Jupyter URL + token; also handles status check and disconnect. "jupyter 繋いで", "connect jupyter", "jupyter mcp", "remote kernel", "jupyter status", "jupyter 切断" などで起動。
 argument-hint: "<ssh command | jupyter url | status | disconnect> [--token TOKEN] [--remote-port N] [--local-port N] [--remote-notebook] [--doc-root DIR]"
-metadata:
-  author: pokutuna
-  compatibility: Requires ssh, curl, jq, uv (uvx)
+compatibility: Requires ssh, curl, jq, uv (uvx)
 allowed-tools:
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup-tunnel.sh *)
   - Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/doc-server.sh *)
