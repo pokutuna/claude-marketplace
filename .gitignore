@@ -12,6 +12,8 @@ __pycache__/
 XAI
 .env
 
-# docgen: screenshot.sh の出力
+# docgen: screenshot.sh の出力 (見本ページの描画結果だけは記録として追跡する)
 *.light.png
 *.dark.png
+!docgen/skills/html/references/component-samples.light.png
+!docgen/skills/html/references/component-samples.dark.png

@@ -300,7 +300,7 @@ li::marker { color: var(--dg-muted); }
 li > ul, li > ol { margin: 4px 0; }
 
 /* 区切り線。h1 の下線と役割が同じなので accent1 で揃える。
-   アクセント色で目立つため、使いどころは ../component-samples.html で絞ってある */
+   アクセント色で目立つため、使いどころは ../../references/component-samples.html で絞ってある */
 hr {
   border: none;
   border-top: var(--dg-border-w) solid var(--dg-accent1);

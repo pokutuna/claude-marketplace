@@ -10,14 +10,14 @@
 
 | Skill | Description |
 |-------|-------------|
-| `html` | 概念・仕組み・調査結果をHTML ドキュメントとして作成・編集する (既定は単一ファイルに bundle) |
+| `html` | HTML ドキュメントを作成・編集する (既定は単一ファイルに bundle) |
 | `writing` | 日本語の説明文や技術文書を明確で自然な文章として作成・推敲する |
 
 ## デザインシステム
 
-`skills/html/design-system/` にある。部品と書き方は `skills/html/component-samples.html` を正とする。
-トークンと内部の規則は `design-system/DESIGN_SYSTEM.md` にまとめてある。
-書き始めは `skills/html/template.html` をコピーする (`<head>` の読み込み順と骨格が入っている)。
+`skills/html/assets/design-system/` にある。部品と書き方は `skills/html/references/component-samples.html` を正とする。
+設計意図と運用ルールは `skills/html/references/DESIGN_SYSTEM.md` にまとめてある。
+書き始めは `skills/html/assets/template.html` をコピーする (`<head>` の読み込み順と骨格が入っている)。
 
 - 用語集 `aside` の有無で 2 カラム / 1 カラムを自動切替
 - ダークモード: OS 設定に追従し、右上のボタンで上書き。選択は localStorage に保存され、
@@ -34,13 +34,13 @@
 | Script | 用途 |
 |--------|------|
 | `scripts/bundle.py` | HTML と `design-system/` を 1 ファイルにまとめる。標準ライブラリのみ。`--offline` では埋め込んだライブラリの名前・版・ライセンスをフッターと HTML コメントに記す |
-| `scripts/screenshot.sh` | headless Chrome でライト / ダークの PNG を撮る。目視確認用 |
+| `scripts/screenshot.sh` | headless Chrome でライト / ダークの PNG を撮る。デザインシステムを変更したときに見本ページを目視確認する用途で、文書を書くたびには使わない |
 
 ```
-bundle.py 原稿.html -o out.html                        # CDN 参照のまま、数十 KB
-bundle.py 原稿.html -o out.html --offline --no-webfonts  # ネットワーク不要、約 6 MB
-bundle.py 原稿.html -o out.html --offline                # Web フォントも埋め込み、約 27 MB
-screenshot.sh 原稿.html [--dark] [--no-network] [--width N] [--height N] [-o out.png]
+bundle.py <input.html> -o <output.html>                        # CDN 参照のまま、数十 KB
+bundle.py <input.html> -o <output.html> --offline --no-webfonts  # ネットワーク不要、約 6 MB
+bundle.py <input.html> -o <output.html> --offline                # Web フォントも埋め込み、約 27 MB
+screenshot.sh <input.html> [--dark] [--no-network] [--width N] [--height N] [-o <output.png>]
 ```
 
 ## Installation

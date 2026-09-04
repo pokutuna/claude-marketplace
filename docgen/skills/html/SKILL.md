@@ -3,33 +3,23 @@ name: html
 description: HTML ドキュメントを作成・編集する。HTML 形式の説明、調査結果、レポートを求められたときに使う。
 metadata:
   author: pokutuna
-  compatibility: Claude Code, Codex CLI
+  compatibility: Requires python3 for bundle.py
 ---
 
 # HTML ドキュメント
 
-同梱のテンプレートとデザインシステムを使い、独自に見た目を設計しない。
-
-このファイルがあるディレクトリの絶対パスを、シェル変数 `SKILL_DIR` に設定する。Claude Code では
-`SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/html"` になる。
+同梱のテンプレートとデザインシステムで HTML ドキュメントを作る。見た目はデザインシステムが決めるので、
+書き手は骨格に本文を入れ、部品のクラスを当てる。
 
 ## 手順
 
-1. 新規文書では `design-system/` と `template.html` を作業用ディレクトリへコピーし、HTML を
-   `{yyyymmdd}-{内容のケバブケース}.html` に改名する。同じディレクトリに `design-system/` が既にあれば
-   それを使い、コピーしない。既存文書ではファイル名と同梱済み資産を維持する
-2. テンプレートの骨格と `<head>` を保ったまま本文を書く。部品の選び方とマークアップは
-   `component-samples.html` を正とし、使う節だけ読む
-3. ライトとダークで描画し、PNG を開いて崩れ・溢れ・重なりを直す。DOM の検査だけで済ませない
+1. `${CLAUDE_PLUGIN_ROOT}/skills/html/assets/` の `design-system/` と `template.html` を作業ディレクトリへコピーし、
+   HTML を `{yyyymmdd}-{内容のケバブケース}.html` に改名する。`design-system/` が既にあればそれを使う。
+   既存文書はファイル名と資産を変えずに編集する
+2. テンプレートの骨格と `<head>` を保って本文を書く。部品とマークアップは `references/component-samples.html` を正とする。
+   ページ固有の `<style>` は図の配置調整など最小限にし、色はトークンの変数で指定する
+3. 分離した構成を求められた場合を除き、単一ファイルに bundle して渡す。ユーザーがオフラインで開ける形を
+   求めたときだけ `--offline` (Web フォントを省くなら `--offline --no-webfonts`) を付ける
    ```sh
-   "${SKILL_DIR}/scripts/screenshot.sh" 原稿.html
-   "${SKILL_DIR}/scripts/screenshot.sh" 原稿.html --dark
+   "${CLAUDE_PLUGIN_ROOT}/skills/html/scripts/bundle.py" <input.html> -o <output.html>
    ```
-   既定は 1280x4000 で、下が切れる文書は `--height` を増やす
-4. 指定なし、単一ファイル、bundle の場合は、分離状態で編集した原稿を別パスへ bundle する
-   ```sh
-   "${SKILL_DIR}/scripts/bundle.py" 原稿.html -o 納品先/原稿と同名.html
-   ```
-   既定は CDN 参照のまま。ネットワークなしなら `--offline --no-webfonts`、Web フォントも埋め込むなら
-   `--offline` を使う。複数ファイル構成では分離したまま渡し、複数文書では `design-system/` を共有する
-5. bundle した場合は納品物も描画して開く
