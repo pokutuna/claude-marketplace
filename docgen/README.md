@@ -40,3 +40,9 @@ screenshot.sh <input.html> [--dark] [--no-network] [--width N] [--height N] [-o 
 ```
 /plugin install docgen@pokutuna-plugins
 ```
+
+## Prior work
+
+- [mathbullet/skills](https://github.com/mathbullet/skills/blob/main/plugins/html/skills/html/SKILL.md)
+  - 構造・style を参考に実装
+- [japanese-tech-writing/SKILL](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d)

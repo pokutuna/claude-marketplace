@@ -1,9 +1,7 @@
 ---
 name: html
 description: HTML ドキュメントの作成・編集。HTML 形式の説明、調査結果、レポートを求められたときに使う。
-metadata:
-  author: pokutuna
-  compatibility: Requires python3 for bundle.py
+compatibility: Requires python3 for bundle.py
 ---
 
 # HTML ドキュメント
