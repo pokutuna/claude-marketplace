@@ -75,12 +75,6 @@
       "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/toggle-plugin"
     },
     {
-      "name": "queue",
-      "description": "Task queue for Claude Code — queue prompts with :q, auto-feed on task completion",
-      "source": "./queue",
-      "homepage": "https://github.com/pokutuna/claude-plugins/tree/main/queue"
-    },
-    {
       "name": "github-copilot",
       "description": "GitHub Copilot CLI integration — second AI opinion and PR review requests",
       "source": "./github-copilot",

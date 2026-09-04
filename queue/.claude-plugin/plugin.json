@@ -1,9 +1,0 @@
-{
-  "name": "queue",
-  "version": "0.1.0",
-  "description": "Task queue for Claude Code — queue prompts with :q, auto-feed on task completion",
-  "author": {
-    "name": "pokutuna"
-  },
-  "keywords": ["queue", "task", "prompt", "batch"]
-}
