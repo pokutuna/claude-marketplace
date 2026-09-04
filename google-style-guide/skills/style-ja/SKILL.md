@@ -1,6 +1,7 @@
 ---
 name: style-ja
-description: 'Check or fix Japanese documentation against the Google developer documentation style guide and Japanese wording conventions. Use when the request is about style conformance itself, such as 校正、表記チェック、スタイルガイドに沿った文章レビュー、または表記・用語がガイドに従っているかという質問。For English documents use style-en instead.'
+description: 日本語ドキュメントを Google developer documentation style guide と日本語表記規則で校正・修正する。英語は style-en。
+disable-model-invocation: true
 compatibility: Self-contained; shares reference files with the style-en skill in this plugin
 ---
 

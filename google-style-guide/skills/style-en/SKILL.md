@@ -1,6 +1,7 @@
 ---
 name: style-en
-description: 'Check or fix English documentation against the Google developer documentation style guide. Use when the request is about style conformance itself, such as a style check, proofread, or style review, or asks whether a wording or notation follows the guide. For Japanese documents use style-ja instead.'
+description: Check or fix English docs against the Google developer documentation style guide. For Japanese docs use style-ja.
+disable-model-invocation: true
 compatibility: WebFetch only as fallback; references/ is shared with style-ja - keep filenames stable
 ---
 
